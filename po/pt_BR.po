@@ -83,11 +83,11 @@ msgstr "Sair"
 msgid "PDF documents"
 msgstr "Documentos PDF"
 
-msgid "Page 1 of {total}"
-msgstr "Página 1 de {total}"
-
 msgid "Unable to open PDF"
 msgstr "Não foi possível abrir o PDF"
 
 msgid "OK"
 msgstr "OK"
+
+msgid "Page {current} of {total}"
+msgstr "Página {current} de {total}"

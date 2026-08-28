@@ -23,13 +23,21 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 
-from gi.repository import Gtk
+from gi.repository import GObject, Gtk
 
 from ..i18n import _
 
 
 class PDFViewer(Gtk.Stack):
-    """Visualizador de páginas PDF."""
+    """PDF document viewer."""
+
+    __gsignals__ = {
+        "page-changed": (
+            GObject.SignalFlags.RUN_FIRST,
+            None,
+            (int,),
+        ),
+    }
 
     def __init__(self):
         super().__init__()
@@ -146,31 +154,46 @@ class PDFViewer(Gtk.Stack):
             self.set_visible_child_name("empty")
             return
 
-        self.show_page(0)
+        self.go_to_page(0)
 
         self.set_visible_child_name(
             "document"
         )
 
-    def show_page(self, page_number):
-        """Exibe uma página do documento."""
+    def go_to_page(self, page_number):
+        """Exibe uma página específica do documento."""
 
         if self.document is None:
             return
 
-        self.page = self.document.get_page(
+        if not self.document.is_open:
+            return
+
+        if page_number < 0:
+            return
+
+        if page_number >= self.document.page_count:
+            return
+
+        page = self.document.get_page(
             page_number
         )
 
-        if self.page is None:
+        if page is None:
             return
 
+        self.page = page
         self.page_number = page_number
 
         width, height = self.page.get_size()
 
-        width = int(width * self.zoom)
-        height = int(height * self.zoom)
+        width = int(
+            width * self.zoom
+        )
+
+        height = int(
+            height * self.zoom
+        )
 
         self.drawing_area.set_content_width(
             width
@@ -182,6 +205,25 @@ class PDFViewer(Gtk.Stack):
 
         self.drawing_area.queue_draw()
 
+        self.emit(
+            "page-changed",
+            self.page_number,
+        )
+
+    def next_page(self):
+        """Go to the next page."""
+
+        self.go_to_page(
+            self.page_number + 1
+        )
+
+    def previous_page(self):
+        """Go to the previous page."""
+        self.go_to_page(
+            self.page_number - 1
+        )
+
+    
     def on_draw(self, drawing_area, cr, width, height):
         """Renderiza a página PDF usando Cairo."""
 

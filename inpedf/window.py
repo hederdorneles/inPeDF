@@ -40,6 +40,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.set_default_size(1100, 750)
         self.set_size_request(700, 450)
 
+        self.create_actions()
         self.build_ui()
 
     def build_ui(self):
@@ -137,8 +138,82 @@ class MainWindow(Adw.ApplicationWindow):
             menu_button
         )
 
+    def create_actions(self):
+        """Create window actions."""
+
+        self.previous_page_action = Gio.SimpleAction.new(
+            "previous-page",
+            None,
+        )
+
+        self.previous_page_action.connect(
+            "activate",
+            self.on_previous_page,
+        )
+
+        self.previous_page_action.set_enabled(
+            False
+        )
+
+        self.add_action(
+            self.previous_page_action
+        )
+
+        self.next_page_action = Gio.SimpleAction.new(
+            "next-page",
+            None,
+        )
+
+        self.next_page_action.connect(
+            "activate",
+            self.on_next_page,
+        )
+
+        self.next_page_action.set_enabled(
+            False
+        )
+
+        self.add_action(
+            self.next_page_action
+        )
+
+    def on_previous_page(self, action, parameter):
+        """Go to the previous page."""
+        
+        self.viewer.previous_page()
+
+    def on_next_page(self, action, parameter):
+        """Go to the next page."""
+
+        self.viewer.next_page()
+
+    def on_page_changed(self, viewer, page_number):
+        """Update page information and navigation actions."""
+
+        if viewer.document is None:
+            return
+
+        total_pages = viewer.document.page_count
+        current_page = page_number + 1
+
+        self.page_label.set_text(
+            _("Page {current} of {total}").format(
+                current=current_page,
+                total=total_pages,
+            )
+        )
+
+        self.previous_page_action.set_enabled(
+            page_number > 0
+        )
+
+        self.next_page_action.set_enabled(
+            page_number < total_pages - 1
+        )
+
+
     def create_content(self):
-        """Cria a área central."""
+        """Create the central area."""
         self.paned = Gtk.Paned(
             orientation=Gtk.Orientation.HORIZONTAL,
         )
@@ -164,6 +239,11 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
         self.viewer = PDFViewer()
+
+        self.viewer.connect(
+            "page-changed",
+            self.on_page_changed,
+        )
 
         self.paned.set_end_child(
             self.viewer
@@ -263,17 +343,17 @@ class MainWindow(Adw.ApplicationWindow):
             tooltip_text=_("Previous page"),
         )
 
+        previous_button.set_action_name(
+            "win.previous-page"
+        )
+
         next_button = Gtk.Button(
             icon_name="go-next-symbolic",
             tooltip_text=_("Next page"),
         )
 
-        previous_button.set_sensitive(
-            False
-        )
-
-        next_button.set_sensitive(
-            False
+        next_button.set_action_name(
+            "win.next-page"
         )
 
         self.page_label = Gtk.Label(
@@ -357,16 +437,10 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
     def load_document(self, document):
-        """Exibe um documento PDF na janela."""
+        """Display a PDF document in the window."""
 
         self.viewer.set_document(
             document
-        )
-
-        self.page_label.set_text(
-            _("Page 1 of {total}").format(
-                total=document.page_count
-            )
         )
 
         self.set_title(
