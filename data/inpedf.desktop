@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=inPeDF
+Comment=Leitor de documentos PDF
+Exec=inpedf
+Icon=inpedf
+Terminal=false
+Categories=Office;Viewer;
+MimeType=application/pdf;
