@@ -91,3 +91,12 @@ msgstr "OK"
 
 msgid "Page {current} of {total}"
 msgstr "Página {current} de {total}"
+
+msgid "Page"
+msgstr "Página"
+
+msgid "of —"
+msgstr "de —"
+
+msgid "of {total}"
+msgstr "de {total}"

@@ -41,6 +41,17 @@ class MainWindow(Adw.ApplicationWindow):
         self.set_size_request(700, 450)
 
         self.create_actions()
+
+        application.set_accels_for_action(
+            "win.previous-page",
+            ["Page_Up"],
+        )
+
+        application.set_accels_for_action(
+            "win.next-page",
+            ["Page_Down"],
+        )
+
         self.build_ui()
 
     def build_ui(self):
@@ -196,9 +207,20 @@ class MainWindow(Adw.ApplicationWindow):
         total_pages = viewer.document.page_count
         current_page = page_number + 1
 
-        self.page_label.set_text(
-            _("Page {current} of {total}").format(
-                current=current_page,
+        self.page_adjustment.set_upper(
+            max(1, total_pages)
+        )
+
+        self.page_spin.set_value(
+            current_page
+        )
+
+        self.page_spin.set_sensitive(
+            total_pages > 0
+        )
+
+        self.page_total_label.set_text(
+            _("of {total}").format(
                 total=total_pages,
             )
         )
@@ -209,6 +231,23 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.next_page_action.set_enabled(
             page_number < total_pages - 1
+        )
+
+    def on_page_spin_changed(self, spin_button):
+        """Go to the page selected in the page control."""
+
+        if self.viewer.document is None:
+            return
+
+        page_number = (
+            spin_button.get_value_as_int() - 1
+        )
+
+        if page_number == self.viewer.page_number:
+            return
+
+        self.viewer.go_to_page(
+            page_number
         )
 
 
@@ -335,7 +374,8 @@ class MainWindow(Adw.ApplicationWindow):
         return label
 
     def create_bottom_bar(self):
-        """Cria a barra inferior."""
+        """Create the bottom navigation bar."""
+
         bar = Gtk.ActionBar()
 
         previous_button = Gtk.Button(
@@ -356,10 +396,6 @@ class MainWindow(Adw.ApplicationWindow):
             "win.next-page"
         )
 
-        self.page_label = Gtk.Label(
-            label=_("Page — / —")
-        )
-
         bar.pack_start(
             previous_button
         )
@@ -368,8 +404,48 @@ class MainWindow(Adw.ApplicationWindow):
             next_button
         )
 
+        page_text = Gtk.Label(
+            label=_("Page")
+        )
+
         bar.pack_start(
-            self.page_label
+            page_text
+        )
+
+        self.page_adjustment = Gtk.Adjustment(
+            value=1,
+            lower=1,
+            upper=1,
+            step_increment=1,
+            page_increment=1,
+        )
+
+        self.page_spin = Gtk.SpinButton(
+            adjustment=self.page_adjustment,
+            climb_rate=1,
+            digits=0,
+        )
+
+        self.page_spin.set_numeric(True)
+        self.page_spin.set_width_chars(4)
+        self.page_spin.set_sensitive(False)
+
+        self.page_spin.connect(
+            "value-changed",
+            self.on_page_spin_changed,
+        )
+
+
+        bar.pack_start(
+            self.page_spin
+        )
+
+        self.page_total_label = Gtk.Label(
+            label=_("of -")
+        )
+
+        bar.pack_start(
+            self.page_total_label
         )
 
         self.zoom_label = Gtk.Label(
