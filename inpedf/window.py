@@ -120,13 +120,18 @@ class MainWindow(Adw.ApplicationWindow):
             tooltip_text=_("Zoom out"),
         )
 
+        zoom_out_button.set_action_name(
+            "win.zoom-out"
+        )
+
         zoom_in_button = Gtk.Button(
             icon_name="zoom-in-symbolic",
             tooltip_text=_("Zoom in"),
         )
 
-        zoom_out_button.set_sensitive(False)
-        zoom_in_button.set_sensitive(False)
+        zoom_in_button.set_action_name(
+            "win.zoom-in"
+        )
 
         self.header_bar.pack_end(
             zoom_in_button
@@ -188,6 +193,44 @@ class MainWindow(Adw.ApplicationWindow):
             self.next_page_action
         )
 
+        self.zoom_out_action = Gio.SimpleAction.new(
+            "zoom-out",
+            None,
+        )
+
+        self.zoom_out_action.connect(
+            "activate",
+            self.on_zoom_out,
+        )
+
+        self.zoom_out_action.set_enabled(
+            False
+        )
+
+        self.add_action(
+            self.zoom_out_action
+        )
+
+        self.zoom_in_action = Gio.SimpleAction.new(
+            "zoom-in",
+            None,
+        )
+
+        self.zoom_in_action.connect(
+            "activate",
+            self.on_zoom_in,
+        )
+
+        self.zoom_in_action.set_enabled(
+            False
+        )
+
+        self.add_action(
+            self.zoom_in_action
+        )
+
+        
+
     def on_previous_page(self, action, parameter):
         """Go to the previous page."""
         
@@ -197,6 +240,16 @@ class MainWindow(Adw.ApplicationWindow):
         """Go to the next page."""
 
         self.viewer.next_page()
+
+    def on_zoom_out(self, action, parameter):
+        """Decrease the document zoom level."""
+
+        self.viewer.zoom_out()
+
+    def on_zoom_in(self, action, parameter):
+        """Increase the document zoom level."""
+
+        self.viewer.zoom_in()  
 
     def on_page_changed(self, viewer, page_number):
         """Update page information and navigation actions."""
@@ -517,6 +570,14 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.viewer.set_document(
             document
+        )
+
+        self.zoom_out_action.set_enabled(
+            True
+        )
+
+        self.zoom_in_action.set_enabled(
+            True
         )
 
         self.set_title(
