@@ -100,3 +100,9 @@ msgstr "de —"
 
 msgid "of {total}"
 msgstr "de {total}"
+
+msgid "Fit width"
+msgstr "Ajustar à largura"
+
+msgid "Fit page"
+msgstr "Ajustar à página"

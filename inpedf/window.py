@@ -24,7 +24,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gio, Gtk
+from gi.repository import Adw, Gio, GLib, Gtk
 
 from .i18n import _
 from .widgets.viewer import PDFViewer
@@ -32,6 +32,7 @@ from .widgets.viewer import PDFViewer
 
 class MainWindow(Adw.ApplicationWindow):
     """Janela principal do leitor de PDF."""
+
 
     def __init__(self, application):
         super().__init__(application=application)
@@ -54,6 +55,12 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.build_ui()
 
+        self.connect(
+            "realize",
+            self.on_window_realize,
+        )
+
+
     def build_ui(self):
         """Constrói a interface principal."""
         self.toolbar_view = Adw.ToolbarView()
@@ -65,6 +72,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.create_header_bar()
         self.create_content()
         self.create_bottom_bar()
+
 
     def create_header_bar(self):
         """Cria a barra superior."""
@@ -154,6 +162,7 @@ class MainWindow(Adw.ApplicationWindow):
             menu_button
         )
 
+
     def create_actions(self):
         """Create window actions."""
 
@@ -229,28 +238,109 @@ class MainWindow(Adw.ApplicationWindow):
             self.zoom_in_action
         )
 
-        
+        self.fit_width_action = Gio.SimpleAction.new(
+            "fit-width",
+            None,
+        )
+
+        self.fit_width_action.connect(
+            "activate",
+            self.on_fit_width,
+        )
+
+        self.fit_width_action.set_enabled(
+            False
+        )
+
+        self.add_action(
+            self.fit_width_action
+        )
+
+        self.fit_page_action = Gio.SimpleAction.new(
+            "fit-page",
+            None,
+        )
+
+        self.fit_page_action.connect(
+            "activate",
+            self.on_fit_page,
+        )
+
+        self.fit_page_action.set_enabled(
+            False
+        )
+
+        self.add_action(
+            self.fit_page_action
+        )
+
 
     def on_previous_page(self, action, parameter):
         """Go to the previous page."""
         
         self.viewer.previous_page()
 
+
     def on_next_page(self, action, parameter):
         """Go to the next page."""
 
         self.viewer.next_page()
+
 
     def on_zoom_out(self, action, parameter):
         """Decrease the document zoom level."""
 
         self.viewer.zoom_out()
 
+
     def on_zoom_in(self, action, parameter):
         """Increase the document zoom level."""
 
-        self.viewer.zoom_in()  
+        self.viewer.zoom_in()
 
+
+    def on_fit_width(self, action, parameter):
+        """Fit the current page to the available width."""
+
+        self.viewer.fit_width()
+
+
+    def on_fit_page(self, action, parameter):
+        """Fit the current page in the available area."""
+
+        self.viewer.fit_page()
+
+
+    def on_window_realize(self, window):
+        """Connect to surface layout changes."""
+
+        surface = self.get_surface()
+
+        if surface is None:
+            return
+
+        surface.connect(
+            "layout",
+            self.on_surface_layout,
+        )
+
+
+    def on_surface_layout(self, surface, width, height):
+        """Reapply the active fit mode after a surface resize."""
+
+        GLib.idle_add(
+            self.reapply_fit_mode
+        )
+
+
+    def reapply_fit_mode(self):
+        """Reapply the viewer fit mode after layout."""
+
+        self.viewer.reapply_fit_mode()
+
+        return False
+
+    
     def on_page_changed(self, viewer, page_number):
         """Update page information and navigation actions."""
 
@@ -285,6 +375,27 @@ class MainWindow(Adw.ApplicationWindow):
         self.next_page_action.set_enabled(
             page_number < total_pages - 1
         )
+
+
+    def on_zoom_changed(self, viewer, zoom):
+        """Update zoom information and action states."""
+
+        zoom_percent = int(
+            round(zoom * 100)
+        )
+
+        self.zoom_label.set_text(
+            f"{zoom_percent}%"
+        )
+
+        self.zoom_out_action.set_enabled(
+            zoom > 0.25
+        )
+
+        self.zoom_in_action.set_enabled(
+            zoom < 4.0
+        )
+
 
     def on_page_spin_changed(self, spin_button):
         """Go to the page selected in the page control."""
@@ -337,6 +448,11 @@ class MainWindow(Adw.ApplicationWindow):
             self.on_page_changed,
         )
 
+        self.viewer.connect(
+            "zoom-changed",
+            self.on_zoom_changed,
+        )
+
         self.paned.set_end_child(
             self.viewer
         )
@@ -348,6 +464,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.paned.set_shrink_end_child(
             False
         )
+
 
     def create_sidebar(self):
         """Cria a barra lateral."""
@@ -410,6 +527,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         return container
 
+
     def create_sidebar_placeholder(self, text):
         """Cria um conteúdo temporário da barra lateral."""
         label = Gtk.Label(
@@ -425,6 +543,7 @@ class MainWindow(Adw.ApplicationWindow):
         label.set_margin_end(12)
 
         return label
+
 
     def create_bottom_bar(self):
         """Create the bottom navigation bar."""
@@ -517,6 +636,7 @@ class MainWindow(Adw.ApplicationWindow):
             bar
         )
 
+
     def create_menu(self):
         """Cria o menu principal."""
         menu = Gio.Menu()
@@ -531,6 +651,23 @@ class MainWindow(Adw.ApplicationWindow):
         menu.append_section(
             None,
             file_section,
+        )
+
+        view_section = Gio.Menu()
+        
+        view_section.append(
+            _("Fit width"),
+            "win.fit-width",
+        )
+
+        view_section.append(
+            _("Fit page"),
+            "win.fit-page",
+        )
+
+        menu.append_section(
+            None,
+            view_section,
         )
 
         application_section = Gio.Menu()
@@ -559,11 +696,13 @@ class MainWindow(Adw.ApplicationWindow):
 
         return menu
 
+
     def on_sidebar_toggled(self, button):
         """Mostra ou oculta a barra lateral."""
         self.sidebar.set_visible(
             button.get_active()
         )
+
 
     def load_document(self, document):
         """Display a PDF document in the window."""
@@ -577,6 +716,14 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
         self.zoom_in_action.set_enabled(
+            True
+        )
+
+        self.fit_width_action.set_enabled(
+            True
+        )
+
+        self.fit_page_action.set_enabled(
             True
         )
 

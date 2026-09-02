@@ -37,6 +37,12 @@ class PDFViewer(Gtk.Stack):
             None,
             (int,),
         ),
+
+        "zoom-changed": (
+            GObject.SignalFlags.RUN_FIRST,
+            None,
+            (float,),
+        ),
     }
 
     def __init__(self):
@@ -47,6 +53,7 @@ class PDFViewer(Gtk.Stack):
         self.page_number = 0
 
         self.zoom = 1.0
+        self.fit_mode = None
 
         self.create_empty_view()
         self.create_document_view()
@@ -177,8 +184,58 @@ class PDFViewer(Gtk.Stack):
             "document"
         )
 
+    # def go_to_page(self, page_number):
+    #     """Exibe uma página específica do documento."""
+
+    #     if self.document is None:
+    #         return
+
+    #     if not self.document.is_open:
+    #         return
+
+    #     if page_number < 0:
+    #         return
+
+    #     if page_number >= self.document.page_count:
+    #         return
+
+    #     page = self.document.get_page(
+    #         page_number
+    #     )
+
+    #     if page is None:
+    #         return
+
+    #     self.page = page
+    #     self.page_number = page_number
+
+    #     width, height = self.page.get_size()
+
+    #     width = int(
+    #         width * self.zoom
+    #     )
+
+    #     height = int(
+    #         height * self.zoom
+    #     )
+
+    #     self.drawing_area.set_content_width(
+    #         width
+    #     )
+
+    #     self.drawing_area.set_content_height(
+    #         height
+    #     )
+
+    #     self.drawing_area.queue_draw()
+
+    #     self.emit(
+    #         "page-changed",
+    #         self.page_number,
+    #     )
+    
     def go_to_page(self, page_number):
-        """Exibe uma página específica do documento."""
+        """Display a specific page of the document."""
 
         if self.document is None:
             return
@@ -202,25 +259,26 @@ class PDFViewer(Gtk.Stack):
         self.page = page
         self.page_number = page_number
 
-        width, height = self.page.get_size()
+        fit_mode = self.fit_mode
 
-        width = int(
-            width * self.zoom
-        )
+        if fit_mode == "width":
+            self.fit_width()
 
-        height = int(
-            height * self.zoom
-        )
+        elif fit_mode == "page":
+            self.fit_page()
 
-        self.drawing_area.set_content_width(
-            width
-        )
+        else:
+            width, height = self.page.get_size()
 
-        self.drawing_area.set_content_height(
-            height
-        )
+            self.drawing_area.set_content_width(
+                int(width * self.zoom)
+            )
 
-        self.drawing_area.queue_draw()
+            self.drawing_area.set_content_height(
+                int(height * self.zoom)
+            )
+
+            self.drawing_area.queue_draw()
 
         self.emit(
             "page-changed",
@@ -236,12 +294,15 @@ class PDFViewer(Gtk.Stack):
 
     def previous_page(self):
         """Go to the previous page."""
+
         self.go_to_page(
             self.page_number - 1
         )
 
     def set_zoom(self, zoom):
         """Set the document zoom level."""
+
+        self.fit_mode = None
 
         if zoom < 0.25:
             zoom = 0.25
@@ -269,6 +330,11 @@ class PDFViewer(Gtk.Stack):
 
         self.drawing_area.queue_draw()
 
+        self.emit(
+            "zoom-changed",
+            self.zoom,
+        )
+
     def zoom_in(self):
         """Increase the document zoom level."""
 
@@ -282,6 +348,79 @@ class PDFViewer(Gtk.Stack):
         self.set_zoom(
             self.zoom - 0.25
         )
+
+    def fit_width(self):
+        """Fit the current page to the available width."""
+
+        if self.page is None:
+            return
+
+        page_width, _ = self.page.get_size()
+
+        available_width = (
+            self.scrolled.get_width() - 48
+        )
+
+        if available_width <= 0:
+            return
+
+        zoom = available_width / page_width
+
+        self.set_zoom(
+            zoom
+        )
+
+        self.fit_mode = "width"
+
+    def fit_page(self):
+        """Fit the entire current page in the available area."""
+
+        if self.page is None:
+            return
+
+        page_width, page_height = self.page.get_size()
+
+        available_width = (
+            self.scrolled.get_width() - 48
+        )
+
+        available_height = (
+           self.scrolled.get_height() - 48
+        )
+
+        if available_width <= 0:
+            return
+
+        if available_height <= 0:
+            return
+
+        width_zoom = (
+            available_width / page_width
+        )
+
+        height_zoom = (
+            available_height / page_height
+        )
+
+        zoom = min(
+            width_zoom,
+            height_zoom,
+        )
+
+        self.set_zoom(
+            zoom
+        )
+
+        self.fit_mode = "page"
+
+    def reapply_fit_mode(self):
+        """Reapply the active page fitting mode"""
+
+        if self.fit_mode == "width":
+            self.fit_width()
+
+        elif self.fit_mode == "page":
+            self.fit_page()
 
     def on_scroll(self, controller, dx, dy):
         """Handle Ctrl+scroll zoom."""
