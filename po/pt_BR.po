@@ -106,3 +106,9 @@ msgstr "Ajustar à largura"
 
 msgid "Fit page"
 msgstr "Ajustar à página"
+
+msgid "Recent files"
+msgstr "Arquivos recentes"
+
+msgid "No recent files"
+msgstr "Nenhum arquivo recente"

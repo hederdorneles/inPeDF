@@ -149,17 +149,17 @@ class MainWindow(Adw.ApplicationWindow):
             zoom_out_button
         )
 
-        menu_button = Gtk.MenuButton(
+        self.menu_button = Gtk.MenuButton(
             icon_name="open-menu-symbolic",
             tooltip_text=_("Main menu"),
         )
 
-        menu_button.set_menu_model(
+        self.menu_button.set_menu_model(
             self.create_menu()
         )
 
         self.header_bar.pack_end(
-            menu_button
+            self.menu_button
         )
 
 
@@ -636,9 +636,17 @@ class MainWindow(Adw.ApplicationWindow):
             bar
         )
 
+    
+
+    def on_sidebar_toggled(self, button):
+        """Mostra ou oculta a barra lateral."""
+        self.sidebar.set_visible(
+            button.get_active()
+        )
 
     def create_menu(self):
-        """Cria o menu principal."""
+        """Create the main application menu."""
+
         menu = Gio.Menu()
 
         file_section = Gio.Menu()
@@ -648,13 +656,51 @@ class MainWindow(Adw.ApplicationWindow):
             "app.open",
         )
 
+        recent_items = (
+            self.get_application()
+            .recent_files
+            .get_items()
+        )
+
+        recent_menu = Gio.Menu()
+
+        if recent_items:
+            for recent in recent_items:
+                item = Gio.MenuItem.new(
+                    recent["name"],
+                    None,
+                )
+
+                item.set_action_and_target_value(
+                    "app.open-recent",
+                    GLib.Variant(
+                        "s",
+                        recent["uri"],
+                    ),
+                )
+
+                recent_menu.append_item(
+                    item
+                )
+
+        else:
+            recent_menu.append(
+                _("No recent files"),
+                None,
+            )
+
+        file_section.append_submenu(
+            _("Recent files"),
+            recent_menu,
+        )
+
         menu.append_section(
             None,
             file_section,
         )
 
         view_section = Gio.Menu()
-        
+
         view_section.append(
             _("Fit width"),
             "win.fit-width",
@@ -696,13 +742,12 @@ class MainWindow(Adw.ApplicationWindow):
 
         return menu
 
+    def refresh_menu(self):
+        """Refresh the main application menu."""
 
-    def on_sidebar_toggled(self, button):
-        """Mostra ou oculta a barra lateral."""
-        self.sidebar.set_visible(
-            button.get_active()
+        self.menu_button.set_menu_model(
+            self.create_menu()
         )
-
 
     def load_document(self, document):
         """Display a PDF document in the window."""

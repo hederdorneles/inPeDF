@@ -32,12 +32,14 @@ from . import __version__
 from .i18n import _
 from .window import MainWindow
 
+from .recent import RecentFiles
+
 
 APP_ID = "br.com.inpedf.InPeDF"
 
 
 class InPeDFApplication(Adw.Application):
-    """Aplicação principal do inPeDF."""
+    """inPeDF Main application."""
 
     def __init__(self):
         super().__init__(
@@ -47,6 +49,7 @@ class InPeDFApplication(Adw.Application):
 
         self.window = None
         self.document = PDFDocument()
+        self.recent_files = RecentFiles()
 
     def configure_icons(self):
         """Adiciona os ícones do inPeDF ao tema de ícones do GTK."""
@@ -73,6 +76,20 @@ class InPeDFApplication(Adw.Application):
             "open",
             self.on_open,
             ["<Ctrl>O"],
+        )
+
+        open_recent_action = Gio.SimpleAction.new(
+            "open-recent",
+            GLib.VariantType.new("s"),
+        )
+
+        open_recent_action.connect(
+            "activate",
+            self.on_open_recent,
+        )
+
+        self.add_action(
+            open_recent_action
         )
 
         self.create_action(
@@ -112,7 +129,7 @@ class InPeDFApplication(Adw.Application):
             )
 
     def on_open(self, action, parameter):
-        """Abre o seletor de documentos PDF."""
+        """Open the PDF documents selector."""
         dialog = Gtk.FileDialog()
 
         dialog.set_title(
@@ -155,6 +172,68 @@ class InPeDFApplication(Adw.Application):
             self.on_open_finish,
         )
 
+    def on_open_recent(self, action, parameter):
+        """Open a document from the recent files list."""
+
+        if parameter is None:
+            return
+
+        uri = parameter.get_string()
+
+        file = Gio.File.new_for_uri(
+            uri
+        )
+
+        try:
+            self.document.open(
+                file
+            )
+
+            self.window.load_document(
+                self.document
+            )
+
+            self.recent_files.add(
+                file
+            )
+
+        except GLib.Error as error:
+            self.show_error(
+                _("Unable to open PDF"),
+                str(error),
+            )
+
+    def on_open_recent(self, action, parameter):
+        """Open a document from the recent files list."""
+
+        if parameter is None:
+            return
+
+        uri = parameter.get_string()
+
+        file = Gio.File.new_for_uri(
+            uri
+        )
+
+        try:
+            self.document.open(
+                file
+            )
+
+            self.window.load_document(
+                self.document
+            )
+
+            self.recent_files.add(
+                file
+            )
+
+        except GLib.Error as error:
+            self.show_error(
+                _("Unable to open PDF"),
+                str(error),
+            )
+
     def on_open_finish(self, dialog, result):
         """Processa o arquivo escolhido pelo usuário."""
 
@@ -176,6 +255,12 @@ class InPeDFApplication(Adw.Application):
             self.window.load_document(
                 self.document
             )
+
+            self.recent_files.add(
+                file
+            )
+
+            self.window.refresh_menu()
 
         except GLib.Error as error:
             self.show_error(
