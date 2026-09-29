@@ -34,6 +34,9 @@ from .window import MainWindow
 
 from .recent import RecentFiles
 
+from .preferences import PreferencesDialog
+from .settings import create_settings
+
 
 APP_ID = "br.com.inpedf.InPeDF"
 
@@ -50,6 +53,7 @@ class InPeDFApplication(Adw.Application):
         self.window = None
         self.document = PDFDocument()
         self.recent_files = RecentFiles()
+        self.settings = create_settings()
 
     def configure_icons(self):
         """Adiciona os ícones do inPeDF ao tema de ícones do GTK."""
@@ -72,6 +76,13 @@ class InPeDFApplication(Adw.Application):
         """Inicializa as ações da aplicação."""
         Adw.Application.do_startup(self)
 
+        self.apply_color_scheme()
+
+        self.settings.connect(
+            "changed::color-scheme",
+            self.on_color_scheme_changed,
+        )
+
         self.create_action(
             "open",
             self.on_open,
@@ -90,6 +101,11 @@ class InPeDFApplication(Adw.Application):
 
         self.add_action(
             open_recent_action
+        )
+
+        self.create_action(
+            "preferences",
+            self.on_preferences,
         )
 
         self.create_action(
@@ -286,6 +302,49 @@ class InPeDFApplication(Adw.Application):
 
         dialog.set_close_response(
             "ok"
+        )
+
+        dialog.present(
+            self.window
+        )
+
+
+    def apply_color_scheme(self):
+        """Apply the configured application color scheme."""
+
+        style_manager = (
+            Adw.StyleManager.get_default()
+        )
+
+        color_scheme = self.settings.get_string(
+            "color-scheme"
+        )
+
+        schemes = {
+            "system": Adw.ColorScheme.PREFER_LIGHT,
+            "light": Adw.ColorScheme.FORCE_LIGHT,
+            "dark": Adw.ColorScheme.FORCE_DARK,
+        }
+
+        style_manager.set_color_scheme(
+            schemes.get(
+                color_scheme,
+                Adw.ColorScheme.PREFER_LIGHT,
+            )
+        )
+
+
+    def on_color_scheme_changed(self, settings, key):
+        """Apply color scheme changes immediately."""
+
+        self.apply_color_scheme()
+
+
+    def on_preferences(self, action, parameter):
+        """Show the application preferences."""
+
+        dialog = PreferencesDialog(
+            self.settings
         )
 
         dialog.present(

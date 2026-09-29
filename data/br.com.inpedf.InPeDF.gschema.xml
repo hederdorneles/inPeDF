@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<schemalist>
+  <schema
+      id="br.com.inpedf.InPeDF"
+      path="/br/com/inpedf/inpedf/">
+
+    <key name="color-scheme" type="s">
+      <choices>
+        <choice value="system"/>
+        <choice value="light"/>
+        <choice value="dark"/>
+      </choices>
+      <default>'system'</default>
+      <summary>Application color scheme</summary>
+      <description>
+        Defines whether the application follows the system color scheme
+        or forces a light or dark appearance.
+      </description>
+    </key>
+
+    <key name="sidebar-visible" type="b">
+      <default>true</default>
+      <summary>Show sidebar</summary>
+      <description>
+        Defines whether the sidebar is visible when the application starts.
+      </description>
+    </key>
+
+    <key name="default-view-mode" type="s">
+      <choices>
+        <choice value="manual"/>
+        <choice value="fit-width"/>
+        <choice value="fit-page"/>
+      </choices>
+      <default>'manual'</default>
+      <summary>Default document view mode</summary>
+      <description>
+        Defines the default view mode used when opening a PDF document.
+      </description>
+    </key>
+
+    <key name="default-zoom" type="i">
+      <range min="25" max="400"/>
+      <default>100</default>
+      <summary>Default zoom percentage</summary>
+      <description>
+        Defines the default zoom level when manual zoom mode is selected.
+      </description>
+    </key>
+
+  </schema>
+</schemalist>

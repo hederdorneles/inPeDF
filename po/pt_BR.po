@@ -112,3 +112,45 @@ msgstr "Arquivos recentes"
 
 msgid "No recent files"
 msgstr "Nenhum arquivo recente"
+
+msgid "Preferences"
+msgstr "Preferências"
+
+msgid "General"
+msgstr "Geral"
+
+msgid "Appearance"
+msgstr "Aparência"
+
+msgid "Color scheme"
+msgstr "Tema"
+
+msgid "System"
+msgstr "Sistema"
+
+msgid "Light"
+msgstr "Claro"
+
+msgid "Dark"
+msgstr "Escuro"
+
+msgid "Document view"
+msgstr "Visualização do documento"
+
+msgid "Show sidebar"
+msgstr "Mostrar barra lateral"
+
+msgid "Show the sidebar when the application starts"
+msgstr "Mostrar a barra lateral ao iniciar o programa"
+
+msgid "Default view mode"
+msgstr "Modo de visualização padrão"
+
+msgid "Manual zoom"
+msgstr "Zoom manual"
+
+msgid "Default zoom"
+msgstr "Zoom padrão"
+
+msgid "Used when manual zoom is selected"
+msgstr "Usado quando o zoom manual estiver selecionado"

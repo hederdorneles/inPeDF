@@ -37,6 +37,8 @@ class MainWindow(Adw.ApplicationWindow):
     def __init__(self, application):
         super().__init__(application=application)
 
+        self.settings = application.settings
+
         self.set_title("inPeDF")
         self.set_default_size(1100, 750)
         self.set_size_request(700, 450)
@@ -54,6 +56,13 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
         self.build_ui()
+
+        self.apply_sidebar_setting()
+
+        self.settings.connect(
+            "changed::sidebar-visible",
+            self.on_sidebar_setting_changed,
+        )
 
         self.connect(
             "realize",
@@ -639,10 +648,53 @@ class MainWindow(Adw.ApplicationWindow):
     
 
     def on_sidebar_toggled(self, button):
-        """Mostra ou oculta a barra lateral."""
+        """Show or hide the sidebar."""
+
+        visible = button.get_active()
+
         self.sidebar.set_visible(
-            button.get_active()
+            visible
         )
+
+        if ( self.settings.get_boolean("sidebar-visible") != visible ):
+            self.settings.set_boolean(
+                "sidebar-visible",
+                visible,
+            )   
+
+
+    def apply_sidebar_setting(self):
+        """Apply the configured sidebar visibility."""
+
+        visible = self.settings.get_boolean(
+            "sidebar-visible"
+        )
+
+        self.sidebar_button.set_active(
+            visible
+        )
+
+        self.sidebar.set_visible(
+            visible
+        )
+
+
+    def on_sidebar_setting_changed(self, settings, key):
+        """Update the sidebar when its setting changes."""
+
+        visible = settings.get_boolean(
+            "sidebar-visible"
+        )
+
+        if self.sidebar_button.get_active() != visible:
+            self.sidebar_button.set_active(
+                visible
+            )
+
+        self.sidebar.set_visible(
+            visible
+        )
+    
 
     def create_menu(self):
         """Create the main application menu."""
@@ -719,6 +771,11 @@ class MainWindow(Adw.ApplicationWindow):
         application_section = Gio.Menu()
 
         application_section.append(
+            _("Preferences"),
+            "app.preferences",
+        )
+
+        application_section.append(
             _("About inPeDF"),
             "app.about",
         )
@@ -742,12 +799,14 @@ class MainWindow(Adw.ApplicationWindow):
 
         return menu
 
+
     def refresh_menu(self):
         """Refresh the main application menu."""
 
         self.menu_button.set_menu_model(
             self.create_menu()
         )
+
 
     def load_document(self, document):
         """Display a PDF document in the window."""
@@ -774,4 +833,28 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.set_title(
             f"{document.name} — inPeDF"
+        )
+
+
+    def apply_default_view(self):
+        """Apply the default document view preferences."""
+
+        view_mode = self.settings.get_string(
+            "default-view-mode"
+        )
+
+        if view_mode == "fit-width":
+            self.viewer.fit_width()
+            return
+
+        if view_mode == "fit-page":
+            self.viewer.fit_page()
+            return
+
+        zoom = self.settings.get_int(
+            "default-zoom"
+        )
+
+        self.viewer.set_zoom(
+            zoom / 100.0
         )
