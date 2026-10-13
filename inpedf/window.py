@@ -40,8 +40,9 @@ class MainWindow(Adw.ApplicationWindow):
         self.settings = application.settings
 
         self.set_title("inPeDF")
-        self.set_default_size(1100, 750)
         self.set_size_request(700, 450)
+
+        self.restore_window_state()
 
         self.create_actions()
 
@@ -57,6 +58,11 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.build_ui()
 
+        self.connect(
+            "close-request",
+            self.on_close_request,
+        )
+
         self.apply_sidebar_setting()
 
         self.settings.connect(
@@ -68,6 +74,57 @@ class MainWindow(Adw.ApplicationWindow):
             "realize",
             self.on_window_realize,
         )
+
+
+    def restore_window_state(self):
+        """Restore the saved window state."""
+
+        width = self.settings.get_int(
+            "window-width"
+        )
+
+        height = self.settings.get_int(
+            "window-height"
+        )
+
+        self.set_default_size(
+            width,
+            height,
+        )
+
+        if self.settings.get_boolean(
+            "window-maximized"
+        ):
+            self.maximize()
+
+
+    def save_window_state(self):
+        """Save the current window state."""
+
+        width, height = self.get_default_size()
+
+        self.settings.set_int(
+            "window-width",
+            width,
+        )
+
+        self.settings.set_int(
+            "window-height",
+            height,
+        )
+
+        self.settings.set_boolean(
+            "window-maximized",
+            self.is_maximized(),
+        )
+
+
+    def on_close_request(self, window):
+        """Save the window state before closing."""
+
+        self.save_window_state()
+
+        return False
 
 
     def build_ui(self):
