@@ -39,6 +39,9 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.settings = application.settings
 
+        self.document_state = application.document_state
+        self._document_state_save_id = None
+
         self.set_title("inPeDF")
         self.set_size_request(700, 450)
 
@@ -119,10 +122,52 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
 
+    def schedule_document_state_save(self):
+        """Schedule saving the current document state."""
+
+        if self._document_state_save_id is not None:
+            GLib.source_remove(
+                self._document_state_save_id
+            )
+
+        self._document_state_save_id = GLib.timeout_add(
+            500,
+            self.save_document_state,
+        )
+
+
+    def save_document_state(self):
+        """Save the current document reading state."""
+
+        self._document_state_save_id = None
+
+        document = self.viewer.document
+
+        if document is None:
+            return False
+
+        if not document.is_open:
+            return False
+
+        if document.file is None:
+            return False
+
+        self.document_state.set(
+            document.file.get_uri(),
+            self.viewer.page_number,
+            self.viewer.zoom,
+        )
+
+        return False
+
+
     def on_close_request(self, window):
-        """Save the window state before closing."""
+        """Save application state before closing."""
 
         self.save_window_state()
+
+        if self.viewer.document is not None:
+            self.save_document_state()
 
         return False
 
@@ -442,6 +487,8 @@ class MainWindow(Adw.ApplicationWindow):
             page_number < total_pages - 1
         )
 
+        self.schedule_document_state_save()
+
 
     def on_zoom_changed(self, viewer, zoom):
         """Update zoom information and action states."""
@@ -461,6 +508,8 @@ class MainWindow(Adw.ApplicationWindow):
         self.zoom_in_action.set_enabled(
             zoom < 4.0
         )
+
+        self.schedule_document_state_save()
 
 
     def on_page_spin_changed(self, spin_button):

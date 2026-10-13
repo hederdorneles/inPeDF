@@ -36,6 +36,7 @@ from .recent import RecentFiles
 
 from .preferences import PreferencesDialog
 from .settings import create_settings
+from .document_state import DocumentStateStore
 
 
 APP_ID = "br.com.inpedf.InPeDF"
@@ -54,6 +55,7 @@ class InPeDFApplication(Adw.Application):
         self.document = PDFDocument()
         self.recent_files = RecentFiles()
         self.settings = create_settings()
+        self.document_state = DocumentStateStore()
 
     def configure_icons(self):
         """Adiciona os ícones do inPeDF ao tema de ícones do GTK."""
@@ -188,36 +190,6 @@ class InPeDFApplication(Adw.Application):
             self.on_open_finish,
         )
 
-    def on_open_recent(self, action, parameter):
-        """Open a document from the recent files list."""
-
-        if parameter is None:
-            return
-
-        uri = parameter.get_string()
-
-        file = Gio.File.new_for_uri(
-            uri
-        )
-
-        try:
-            self.document.open(
-                file
-            )
-
-            self.window.load_document(
-                self.document
-            )
-
-            self.recent_files.add(
-                file
-            )
-
-        except GLib.Error as error:
-            self.show_error(
-                _("Unable to open PDF"),
-                str(error),
-            )
 
     def on_open_recent(self, action, parameter):
         """Open a document from the recent files list."""
