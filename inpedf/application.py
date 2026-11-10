@@ -203,6 +203,8 @@ class InPeDFApplication(Adw.Application):
             uri
         )
 
+        self.window.flush_document_state()
+
         try:
             self.document.open(
                 file
@@ -234,6 +236,8 @@ class InPeDFApplication(Adw.Application):
             # Normalmente significa que o usuário
             # cancelou o seletor de arquivos.
             return
+
+        self.window.flush_document_state()
 
         try:
             self.document.open(

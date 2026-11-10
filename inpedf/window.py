@@ -161,13 +161,20 @@ class MainWindow(Adw.ApplicationWindow):
         return False
 
 
+    def flush_document_state(self):
+        """Save pending reading state before switching or closing."""
+
+        if self._document_state_save_id is not None:
+            GLib.source_remove(self._document_state_save_id)
+            self.save_document_state()
+
+
     def on_close_request(self, window):
         """Save application state before closing."""
 
         self.save_window_state()
 
-        if self.viewer.document is not None:
-            self.save_document_state()
+        self.flush_document_state()
 
         return False
 
@@ -917,17 +924,26 @@ class MainWindow(Adw.ApplicationWindow):
     def load_document(self, document):
         """Display a PDF document in the window."""
 
-        self.viewer.set_document(
-            document
-        )
+        self.viewer.fit_mode = None
+        self.viewer.set_document(document)
 
-        self.zoom_out_action.set_enabled(
-            True
-        )
+        state = self.document_state.get(document.file.get_uri()) or {}
+        page = state.get("page")
+        zoom = state.get("zoom")
 
-        self.zoom_in_action.set_enabled(
-            True
-        )
+        if (
+            type(page) is int
+            and 0 <= page < document.page_count
+            and type(zoom) in (int, float)
+            and 0.25 <= zoom <= 4.0
+        ):
+            self.viewer.set_zoom(zoom)
+            self.viewer.go_to_page(page)
+        else:
+            self.apply_default_view()
+
+        self.zoom_out_action.set_enabled(self.viewer.zoom > 0.25)
+        self.zoom_in_action.set_enabled(self.viewer.zoom < 4.0)
 
         self.fit_width_action.set_enabled(
             True
