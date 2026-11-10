@@ -154,3 +154,30 @@ msgstr "Zoom padrão"
 
 msgid "Used when manual zoom is selected"
 msgstr "Usado quando o zoom manual estiver selecionado"
+#: inpedf/window.py
+msgid "This PDF has no outline"
+msgstr "Este PDF não tem sumário"
+
+#: inpedf/window.py
+msgid "This PDF has no annotations"
+msgstr "Este PDF não tem anotações"
+
+#: inpedf/window.py
+msgid "Page {number}"
+msgstr "Página {number}"
+
+#: inpedf/window.py
+msgid "Annotation"
+msgstr "Anotação"
+
+#: inpedf/window.py
+msgid "Single page"
+msgstr "Página única"
+
+#: inpedf/window.py
+msgid "Continuous"
+msgstr "Contínuo"
+
+#: inpedf/window.py
+msgid "View mode"
+msgstr "Modo de visualização"

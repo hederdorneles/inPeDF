@@ -23,8 +23,9 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
+gi.require_version("Poppler", "0.18")
 
-from gi.repository import Adw, Gio, GLib, Gtk
+from gi.repository import Adw, Gio, GLib, Gtk, Poppler
 
 from .i18n import _
 from .widgets.viewer import PDFViewer
@@ -59,7 +60,10 @@ class MainWindow(Adw.ApplicationWindow):
             ["Page_Down"],
         )
 
+        application.set_accels_for_action("win.find", ["<Ctrl>f"])
+
         self.build_ui()
+        self.lookup_action("page-layout").change_state(GLib.Variant("s", "continuous"))
 
         self.connect(
             "close-request",
@@ -188,9 +192,104 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
         self.create_header_bar()
+        self.create_search_bar()
         self.create_content()
         self.create_bottom_bar()
 
+
+    def create_search_bar(self):
+        """Add the document search controls below the header."""
+        self.search_results = []
+        self.search_index = 0
+        self.search_bar = Gtk.SearchBar(show_close_button=True)
+        controls = Gtk.Box(spacing=6)
+        self.search_entry = Gtk.SearchEntry(placeholder_text=_("Find in PDF"))
+        self.search_status = Gtk.Label()
+        self.search_previous = Gtk.Button(
+            icon_name="go-up-symbolic",
+            tooltip_text=_("Previous result"),
+        )
+        self.search_next = Gtk.Button(
+            icon_name="go-down-symbolic",
+            tooltip_text=_("Next result"),
+        )
+
+        controls.append(self.search_entry)
+        controls.append(self.search_previous)
+        controls.append(self.search_next)
+        controls.append(self.search_status)
+        self.search_bar.set_child(controls)
+        self.search_bar.connect_entry(self.search_entry)
+        self.toolbar_view.add_top_bar(self.search_bar)
+
+        self.search_entry.connect("activate", self.on_search)
+        self.search_entry.connect("changed", self.clear_search)
+        self.search_entry.connect("stop-search", self.close_search)
+        self.search_previous.connect("clicked", self.move_search_result, -1)
+        self.search_next.connect("clicked", self.move_search_result, 1)
+        self.search_bar.connect("notify::search-mode-enabled", self.on_search_visibility_changed)
+        self.search_previous.set_sensitive(False)
+        self.search_next.set_sensitive(False)
+
+    def on_find(self, action, parameter):
+        self.search_bar.set_search_mode(True)
+        self.search_entry.grab_focus()
+
+    def close_search(self, entry):
+        self.search_bar.set_search_mode(False)
+
+    def on_search_visibility_changed(self, bar, parameter):
+        if not bar.get_search_mode():
+            self.clear_search()
+
+    def clear_search(self, entry=None):
+        self.search_results.clear()
+        self.search_index = 0
+        self.search_previous.set_sensitive(False)
+        self.search_next.set_sensitive(False)
+        self.search_status.set_text("")
+        self.viewer.set_search_highlight(None)
+
+    def on_search(self, entry):
+        """Find the query across all pages, or advance on repeated Enter."""
+        if self.search_results:
+            self.move_search_result(None, 1)
+            return
+
+        query = entry.get_text().strip()
+        document = self.viewer.document
+        if not query or document is None:
+            return
+
+        for page_number in range(document.page_count):
+            page = document.get_page(page_number)
+            self.search_results.extend(
+                (page_number, rectangle) for rectangle in page.find_text(query)
+            )
+
+        if not self.search_results:
+            self.search_status.set_text(_("No results"))
+            return
+
+        self.search_previous.set_sensitive(len(self.search_results) > 1)
+        self.search_next.set_sensitive(len(self.search_results) > 1)
+        self.show_search_result()
+
+    def move_search_result(self, button, direction):
+        self.search_index = (self.search_index + direction) % len(self.search_results)
+        self.show_search_result()
+
+    def show_search_result(self):
+        page_number, rectangle = self.search_results[self.search_index]
+        if page_number != self.viewer.page_number:
+            self.viewer.go_to_page(page_number)
+        self.viewer.set_search_highlight(rectangle)
+        self.search_status.set_text(
+            _("{current} of {total}").format(
+                current=self.search_index + 1,
+                total=len(self.search_results),
+            )
+        )
 
     def create_header_bar(self):
         """Cria a barra superior."""
@@ -283,6 +382,17 @@ class MainWindow(Adw.ApplicationWindow):
 
     def create_actions(self):
         """Create window actions."""
+
+        layout = Gio.SimpleAction.new_stateful(
+            "page-layout", GLib.VariantType.new("s"), GLib.Variant("s", "single")
+        )
+        layout.connect("change-state", self.on_page_layout_changed)
+        self.add_action(layout)
+
+        self.find_action = Gio.SimpleAction.new("find", None)
+        self.find_action.connect("activate", self.on_find)
+        self.find_action.set_enabled(False)
+        self.add_action(self.find_action)
 
         self.previous_page_action = Gio.SimpleAction.new(
             "previous-page",
@@ -393,6 +503,17 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
 
+    def on_page_layout_changed(self, action, value):
+        mode = value.get_string()
+        if mode in ("single", "continuous") and value != action.get_state():
+            self.viewer.set_continuous(mode == "continuous")
+            action.set_state(value)
+            self.continuous_button.set_active(mode == "continuous")
+
+    def on_continuous_toggled(self, button):
+        mode = "continuous" if button.get_active() else "single"
+        self.lookup_action("page-layout").change_state(GLib.Variant("s", mode))
+
     def on_previous_page(self, action, parameter):
         """Go to the previous page."""
         
@@ -467,6 +588,9 @@ class MainWindow(Adw.ApplicationWindow):
 
         total_pages = viewer.document.page_count
         current_page = page_number + 1
+        selection = self.thumbnails_view.get_model()
+        if selection is not None:
+            selection.set_selected(page_number)
 
         self.page_adjustment.set_upper(
             max(1, total_pages)
@@ -603,17 +727,11 @@ class MainWindow(Adw.ApplicationWindow):
         stack = Gtk.Stack()
         stack.set_vexpand(True)
 
-        pages = self.create_sidebar_placeholder(
-            _("Page thumbnails")
-        )
+        pages = self.create_thumbnails_panel()
 
-        outline = self.create_sidebar_placeholder(
-            _("Document outline")
-        )
+        outline = self.create_outline_panel()
 
-        annotations = self.create_sidebar_placeholder(
-            _("Annotations")
-        )
+        annotations = self.create_annotations_panel()
 
         stack.add_titled(
             pages,
@@ -633,6 +751,9 @@ class MainWindow(Adw.ApplicationWindow):
             _("Annotations"),
         )
 
+        self.sidebar_stack = stack
+        stack.connect("notify::visible-child-name", self.on_sidebar_tab_changed)
+
         switcher = Gtk.StackSwitcher()
 
         switcher.set_stack(stack)
@@ -649,6 +770,199 @@ class MainWindow(Adw.ApplicationWindow):
 
         return container
 
+
+    def create_thumbnails_panel(self):
+        """Create a virtualized list that renders thumbnails as rows appear."""
+        self.thumbnails_panel = Gtk.Stack()
+        self.thumbnails_panel.add_named(
+            self.create_sidebar_placeholder(_("Page thumbnails")),
+            "empty",
+        )
+
+        factory = Gtk.SignalListItemFactory()
+        factory.connect("setup", self.setup_thumbnail)
+        factory.connect("bind", self.bind_thumbnail)
+        self.thumbnails_view = Gtk.ListView(
+            factory=factory,
+            single_click_activate=True,
+        )
+        self.thumbnails_view.connect("activate", self.on_thumbnail_activated)
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scrolled.set_child(self.thumbnails_view)
+        self.thumbnails_panel.add_named(scrolled, "pages")
+        self.thumbnails_panel.set_visible_child_name("empty")
+        return self.thumbnails_panel
+
+    def setup_thumbnail(self, factory, item):
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        content.set_margin_top(8)
+        content.set_margin_bottom(8)
+        preview = Gtk.DrawingArea(content_width=112, content_height=144)
+        preview.set_halign(Gtk.Align.CENTER)
+        content.append(preview)
+        content.append(Gtk.Label())
+        item.set_child(content)
+
+    def bind_thumbnail(self, factory, item):
+        content = item.get_child()
+        content.get_last_child().set_text(item.get_item().get_string())
+        preview = content.get_first_child()
+        preview.set_draw_func(self.draw_thumbnail, item.get_position())
+        preview.queue_draw()
+
+    def draw_thumbnail(self, area, cr, width, height, position):
+        document = self.viewer.document
+        if document is None or position >= document.page_count:
+            return
+
+        page = document.get_page(position)
+        page_width, page_height = page.get_size()
+        if page_width <= 0 or page_height <= 0:
+            return
+
+        scale = min(width / page_width, height / page_height)
+        cr.translate((width - page_width * scale) / 2, (height - page_height * scale) / 2)
+        cr.scale(scale, scale)
+        cr.rectangle(0, 0, page_width, page_height)
+        cr.clip()
+        cr.set_source_rgb(1, 1, 1)
+        cr.paint()
+        page.render(cr)
+
+    def update_thumbnails(self, document):
+        pages = Gtk.StringList.new(
+            [str(number) for number in range(1, document.page_count + 1)]
+        )
+        selection = Gtk.SingleSelection(model=pages)
+        selection.set_selected(self.viewer.page_number)
+        self.thumbnails_view.set_model(selection)
+        self.thumbnails_panel.set_visible_child_name("pages" if document.page_count else "empty")
+
+    def on_thumbnail_activated(self, view, position):
+        self.viewer.go_to_page(position)
+
+    def create_annotations_panel(self):
+        """Create the read-only list of annotations embedded in the PDF."""
+        self.annotations_loaded = False
+        self.annotations_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        self.annotations_list.set_placeholder(
+            self.create_sidebar_placeholder(_("This PDF has no annotations"))
+        )
+        self.annotations_list.connect("row-activated", self.on_annotation_activated)
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scrolled.set_child(self.annotations_list)
+        return scrolled
+
+    def reset_annotations(self):
+        """Clear entries from the previous PDF and refresh the visible tab."""
+        while row := self.annotations_list.get_first_child():
+            self.annotations_list.remove(row)
+        self.annotations_loaded = False
+        self.on_sidebar_tab_changed(self.sidebar_stack, None)
+
+    def on_sidebar_tab_changed(self, stack, parameter):
+        """Read annotation mappings when the user first opens the tab."""
+        if self.annotations_loaded or stack.get_visible_child_name() != "annotations":
+            return
+
+        document = self.viewer.document
+        if document is None:
+            return
+
+        excluded_types = (
+            Poppler.AnnotType.LINK,
+            Poppler.AnnotType.POPUP,
+            Poppler.AnnotType.WIDGET,
+        )
+        for page_number in range(document.page_count):
+            page = document.get_page(page_number)
+            for mapping in page.get_annot_mapping():
+                annotation = mapping.annot
+                if annotation.get_annot_type() in excluded_types:
+                    continue
+
+                contents = (annotation.get_contents() or "").strip()
+                row = Adw.ActionRow(
+                    title=_("Page {number}").format(number=page_number + 1),
+                    use_markup=False,
+                    activatable=True,
+                )
+                row.set_subtitle(contents or _("Annotation"))
+                row.page_number = page_number
+                self.annotations_list.append(row)
+
+        self.annotations_loaded = True
+
+    def on_annotation_activated(self, list_box, row):
+        self.viewer.go_to_page(row.page_number)
+
+    def create_outline_panel(self):
+        """Create the sidebar tree and its empty state."""
+        self.outline_panel = Gtk.Stack()
+        self.outline_empty = self.create_sidebar_placeholder(_("Document outline"))
+        self.outline_panel.add_named(self.outline_empty, "empty")
+
+        self.outline_model = Gtk.TreeStore(str, int)
+        self.outline_tree = Gtk.TreeView(
+            model=self.outline_model,
+            headers_visible=False,
+            activate_on_single_click=True,
+        )
+        self.outline_tree.append_column(
+            Gtk.TreeViewColumn(_("Outline"), Gtk.CellRendererText(), text=0)
+        )
+        self.outline_tree.connect("row-activated", self.on_outline_activated)
+
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_child(self.outline_tree)
+        self.outline_panel.add_named(scrolled, "tree")
+        self.outline_panel.set_visible_child_name("empty")
+        return self.outline_panel
+
+    def update_outline(self, document):
+        """Replace the outline with the chapters of the opened PDF."""
+        self.outline_model.clear()
+        try:
+            index = Poppler.IndexIter.new(document.document)
+        except TypeError:
+            # PyGObject raises when Poppler returns NULL for a missing outline.
+            index = None
+        if index is None:
+            self.outline_empty.set_text(_("This PDF has no outline"))
+            self.outline_panel.set_visible_child_name("empty")
+            return
+
+        self.append_outline_entries(document, index)
+        self.outline_panel.set_visible_child_name("tree")
+
+    def append_outline_entries(self, document, index, parent=None):
+        """Add sibling entries and preserve their nested sections."""
+        while True:
+            action = index.get_action()
+            page = -1
+            if action.type == Poppler.ActionType.GOTO_DEST:
+                destination = action.goto_dest.dest
+                if destination and destination.type == Poppler.DestType.NAMED:
+                    destination = document.document.find_dest(destination.named_dest)
+                if destination and 1 <= destination.page_num <= document.page_count:
+                    page = destination.page_num - 1
+
+            row = self.outline_model.append(parent, (action.any.title or "", page))
+            child = index.get_child()
+            if child is not None:
+                self.append_outline_entries(document, child, row)
+                if index.is_open():
+                    self.outline_tree.expand_row(self.outline_model.get_path(row), False)
+
+            if not index.next():
+                break
+
+    def on_outline_activated(self, tree, path, column):
+        page = self.outline_model[path][1]
+        if page >= 0:
+            self.viewer.go_to_page(page)
 
     def create_sidebar_placeholder(self, text):
         """Cria um conteúdo temporário da barra lateral."""
@@ -697,6 +1011,13 @@ class MainWindow(Adw.ApplicationWindow):
         bar.pack_start(
             next_button
         )
+
+        self.continuous_button = Gtk.ToggleButton(
+            icon_name="view-list-symbolic",
+            tooltip_text=_("Continuous"),
+        )
+        self.continuous_button.connect("toggled", self.on_continuous_toggled)
+        bar.pack_start(self.continuous_button)
 
         page_text = Gtk.Label(
             label=_("Page")
@@ -865,6 +1186,10 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
         view_section = Gio.Menu()
+        layouts = Gio.Menu()
+        layouts.append(_("Single page"), "win.page-layout::single")
+        layouts.append(_("Continuous"), "win.page-layout::continuous")
+        view_section.append_submenu(_("View mode"), layouts)
 
         view_section.append(
             _("Fit width"),
@@ -924,8 +1249,14 @@ class MainWindow(Adw.ApplicationWindow):
     def load_document(self, document):
         """Display a PDF document in the window."""
 
+        self.clear_search()
+        self.search_entry.set_text("")
         self.viewer.fit_mode = None
+        self.thumbnails_view.set_model(None)
         self.viewer.set_document(document)
+        self.find_action.set_enabled(True)
+        self.update_outline(document)
+        self.reset_annotations()
 
         state = self.document_state.get(document.file.get_uri()) or {}
         page = state.get("page")
@@ -941,6 +1272,8 @@ class MainWindow(Adw.ApplicationWindow):
             self.viewer.go_to_page(page)
         else:
             self.apply_default_view()
+
+        self.update_thumbnails(document)
 
         self.zoom_out_action.set_enabled(self.viewer.zoom > 0.25)
         self.zoom_in_action.set_enabled(self.viewer.zoom < 4.0)
