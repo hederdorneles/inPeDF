@@ -314,3 +314,28 @@ msgstr "Girar à direita"
 
 msgid "Rotate left / right"
 msgstr "Girar à esquerda / direita"
+
+#: inpedf/window.py
+msgid "No bookmarks in this document"
+msgstr "Nenhum marcador neste documento"
+
+#: inpedf/window.py
+msgid "Bookmark current page"
+msgstr "Marcar página atual"
+
+#: inpedf/window.py
+msgid "Bookmarks"
+msgstr "Marcadores"
+
+#: inpedf/window.py
+msgid "Remove bookmark"
+msgstr "Remover marcador"
+
+#: inpedf/window.py
+msgid "Unable to save bookmark"
+msgstr "Não foi possível salvar o marcador"
+
+#. Translators: replace this with your names, one per line.
+#: inpedf/application.py
+msgid "translator-credits"
+msgstr ""

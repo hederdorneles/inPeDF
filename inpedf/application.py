@@ -359,6 +359,7 @@ class InPeDFApplication(Adw.Application):
         )
 
         about.set_version(__version__)
+        about.set_translator_credits(_("translator-credits"))
 
         about.set_comments(
             _(

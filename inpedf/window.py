@@ -68,6 +68,10 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.build_ui()
         self.create_presentation_end()
+        drop_target = Gtk.DropTarget(actions=Gdk.DragAction.COPY)
+        drop_target.set_gtypes([Gdk.FileList, Gio.File])
+        drop_target.connect("drop", self.on_pdf_dropped)
+        self.add_controller(drop_target)
         keys = Gtk.EventControllerKey()
         keys.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
         keys.connect("key-pressed", self.on_navigation_key)
@@ -581,6 +585,80 @@ class MainWindow(Adw.ApplicationWindow):
 
     def on_rotate(self, action, parameter, clockwise):
         self.viewer.rotate(clockwise)
+
+    def on_pdf_dropped(self, target, value, x, y):
+        files = value.get_files() if isinstance(value, Gdk.FileList) else [value]
+        if len(files) != 1 or not isinstance(files[0], Gio.File):
+            return False
+        self.get_application().open_file(files[0])
+        return True
+
+    def create_bookmarks_button(self):
+        self.bookmarks_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        self.bookmarks_list.set_placeholder(Gtk.Label(
+            label=_("No bookmarks in this document"), margin_top=12, margin_bottom=12,
+            margin_start=12, margin_end=12,
+        ))
+        self.bookmarks_list.connect("row-activated", self.on_bookmark_activated)
+        scrolled = Gtk.ScrolledWindow(min_content_width=280, max_content_height=360,
+                                     propagate_natural_height=True)
+        scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scrolled.set_child(self.bookmarks_list)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.add_bookmark_button = Gtk.Button(label=_("Bookmark current page"), sensitive=False)
+        self.add_bookmark_button.connect("clicked", self.on_add_bookmark)
+        content.append(self.add_bookmark_button)
+        content.append(scrolled)
+        self.bookmarks_popover = Gtk.Popover()
+        self.bookmarks_popover.set_child(content)
+        button = Gtk.MenuButton(icon_name="user-bookmarks-symbolic", tooltip_text=_("Bookmarks"))
+        button.set_popover(self.bookmarks_popover)
+        return button
+
+    def refresh_bookmarks(self):
+        while row := self.bookmarks_list.get_first_child():
+            self.bookmarks_list.remove(row)
+        document = self.viewer.document
+        self.add_bookmark_button.set_sensitive(document is not None and document.is_open)
+        if document is None or not document.is_open:
+            return
+        for number, title in self.document_state.get_bookmarks(document.file.get_uri()).items():
+            if number >= document.page_count:
+                continue
+            row = Adw.ActionRow(use_markup=False, activatable=True)
+            row.set_title(title)
+            row.page_number = number
+            remove = Gtk.Button(icon_name="edit-delete-symbolic",
+                                tooltip_text=_("Remove bookmark"), valign=Gtk.Align.CENTER)
+            remove.add_css_class("flat")
+            remove.connect("clicked", self.on_remove_bookmark, number)
+            row.add_suffix(remove)
+            self.bookmarks_list.append(row)
+
+    def on_add_bookmark(self, button):
+        document = self.viewer.document
+        if document is None or not document.is_open:
+            return
+        self.write_bookmark(
+            self.viewer.page_number,
+            _("Page {number}").format(number=self.viewer.page_number + 1),
+        )
+
+    def on_remove_bookmark(self, button, number):
+        self.write_bookmark(number, None)
+
+    def write_bookmark(self, number, title):
+        uri = self.viewer.document.file.get_uri()
+        try:
+            self.document_state.set_bookmark(uri, number, title)
+        except OSError as error:
+            self.get_application().show_error(_("Unable to save bookmark"), str(error))
+            return
+        self.refresh_bookmarks()
+
+    def on_bookmark_activated(self, list_box, row):
+        self.viewer.navigate_to_page(row.page_number)
+        self.bookmarks_popover.popdown()
 
     def on_navigation_key(self, controller, keyval, keycode, state):
         if self.presentation_state is not None:
@@ -1296,6 +1374,7 @@ class MainWindow(Adw.ApplicationWindow):
         """Create the bottom navigation bar."""
 
         bar = Gtk.ActionBar()
+        bar.pack_start(self.create_bookmarks_button())
 
         for name, icon, label in (
             ("history-back", "edit-undo-symbolic", _("Back")),
@@ -1592,6 +1671,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.lookup_action("presentation-current").set_enabled(True)
         self.update_outline(document)
         self.reset_annotations()
+        self.refresh_bookmarks()
 
         state = self.document_state.get(document.file.get_uri()) or {}
         page = state.get("page")

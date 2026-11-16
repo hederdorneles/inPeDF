@@ -109,30 +109,69 @@ class DocumentStateStore:
     def set(self, uri, page_number, zoom):
         """Store reading state for a document."""
 
-        self.data[uri] = {
+        state = self.get(uri) or {}
+        state.update({
             "page": int(page_number),
             "zoom": float(zoom),
             "updated": int(time.time()),
-        }
+        })
+        self.data[uri] = state
 
         self._prune()
         self._save()
 
+    def get_bookmarks(self, uri):
+        """Return page-number bookmarks, ignoring malformed legacy values."""
+        state = self.get(uri) or {}
+        bookmarks = state.get("bookmarks", {})
+        if not isinstance(bookmarks, dict):
+            return {}
+        result = {}
+        for key, title in bookmarks.items():
+            try:
+                page = int(key)
+            except (TypeError, ValueError):
+                continue
+            if page >= 0 and isinstance(title, str):
+                result[page] = title
+        return dict(sorted(result.items()))
+
+    def set_bookmark(self, uri, page, title):
+        """Add or remove a bookmark and preserve the reading state."""
+        previous = self.get(uri)
+        state = (previous or {}).copy()
+        bookmarks = self.get_bookmarks(uri)
+        if title is None:
+            bookmarks.pop(page, None)
+        else:
+            bookmarks[page] = title
+        state["bookmarks"] = {str(number): text for number, text in bookmarks.items()}
+        state["updated"] = int(time.time())
+        self.data[uri] = state
+        try:
+            self._save()
+        except OSError:
+            if previous is None:
+                self.data.pop(uri, None)
+            else:
+                self.data[uri] = previous
+            raise
+
     def _prune(self):
-        """Keep only the most recently updated document states."""
-
-        if len(self.data) <= MAX_DOCUMENT_STATES:
-            return
-
-        items = sorted(
-            self.data.items(),
-            key=lambda item: item[1].get(
-                "updated",
-                0,
+        """Limit recent reading states while retaining personal bookmarks."""
+        bookmarked = {
+            uri: state for uri, state in self.data.items()
+            if isinstance(state, dict) and self.get_bookmarks(uri)
+        }
+        recent = [
+            (uri, state) for uri, state in self.data.items()
+            if uri not in bookmarked and isinstance(state, dict)
+        ]
+        recent.sort(
+            key=lambda item: (
+                item[1].get("updated", 0)
+                if isinstance(item[1].get("updated", 0), (int, float)) else 0
             ),
             reverse=True,
         )
-
-        self.data = dict(
-            items[:MAX_DOCUMENT_STATES]
-        )
+        self.data = {**bookmarked, **dict(recent[:MAX_DOCUMENT_STATES])}

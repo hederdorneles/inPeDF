@@ -20,7 +20,9 @@ Leitor de PDFs para Linux, desenvolvido em Python com GTK 4, Libadwaita e Popple
 - Impressão pela janela do sistema.
 - Apresentação em tela cheia, com tela de encerramento.
 - Propriedades do documento, incluindo metadados, tamanho e permissões.
-- Lista de arquivos recentes, preferências e interface traduzível.
+- Marcadores pessoais por documento, com acesso pelo botão Marcadores na barra inferior.
+- Abertura de um PDF ao arrastar e soltar o arquivo sobre a janela.
+- Lista de arquivos recentes, preferências e interface traduzível, com suporte a créditos de tradutores.
 - Abertura por caminho ou URI, inclusive quando o aplicativo já está em execução.
 
 ### Como executar
@@ -96,7 +98,9 @@ A PDF reader for Linux, built with Python, GTK 4, Libadwaita and Poppler. inPeDF
 - Printing through the system dialog.
 - Fullscreen presentations with an end-of-presentation screen.
 - Document properties, including metadata, size and permissions.
-- Recent files, preferences and a translatable interface.
+- Personal bookmarks per document, accessible through the Bookmarks button in the bottom bar.
+- Opening a PDF by dragging and dropping a file onto the window.
+- Recent files, preferences and a translatable interface with translator credit support.
 - Opening by file path or URI, including when the application is already running.
 
 ### Running from source
