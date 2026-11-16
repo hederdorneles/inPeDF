@@ -47,7 +47,7 @@ class PDFDocument:
 
         return self.document.get_n_pages()
 
-    def open(self, file):
+    def open(self, file, password=None):
         """Abre um arquivo PDF."""
 
         if not isinstance(file, Gio.File):
@@ -57,7 +57,7 @@ class PDFDocument:
 
         self.document = Poppler.Document.new_from_file(
             uri,
-            None,
+            password,
         )
 
         self.file = file

@@ -25,7 +25,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("Poppler", "0.18")
 
-from gi.repository import Adw, Gio, GLib, Gtk, Poppler
+from gi.repository import Adw, Gio, GLib, Gtk, Poppler, Gdk
 
 from .i18n import _
 from .widgets.viewer import PDFViewer
@@ -40,6 +40,8 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.settings = application.settings
 
+        self.presentation_state = None
+        self.print_settings = None
         self.document_state = application.document_state
         self._document_state_save_id = None
 
@@ -62,7 +64,14 @@ class MainWindow(Adw.ApplicationWindow):
 
         application.set_accels_for_action("win.find", ["<Ctrl>f"])
 
+        application.set_accels_for_action("win.print", ["<Ctrl>p"])
+
         self.build_ui()
+        self.create_presentation_end()
+        keys = Gtk.EventControllerKey()
+        keys.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        keys.connect("key-pressed", self.on_navigation_key)
+        self.add_controller(keys)
         self.lookup_action("page-layout").change_state(GLib.Variant("s", "continuous"))
 
         self.connect(
@@ -176,6 +185,10 @@ class MainWindow(Adw.ApplicationWindow):
     def on_close_request(self, window):
         """Save application state before closing."""
 
+        if self.presentation_state is not None:
+            self.end_presentation()
+        self.clear_search()
+        self.viewer.stop_selection_scroll()
         self.save_window_state()
 
         self.flush_document_state()
@@ -199,6 +212,7 @@ class MainWindow(Adw.ApplicationWindow):
 
     def create_search_bar(self):
         """Add the document search controls below the header."""
+        self.search_source_id = 0
         self.search_results = []
         self.search_index = 0
         self.search_bar = Gtk.SearchBar(show_close_button=True)
@@ -218,6 +232,10 @@ class MainWindow(Adw.ApplicationWindow):
         controls.append(self.search_previous)
         controls.append(self.search_next)
         controls.append(self.search_status)
+        self.search_cancel = Gtk.Button(icon_name="process-stop-symbolic",
+                                        tooltip_text=_("Cancel search"), visible=False)
+        self.search_cancel.connect("clicked", self.on_cancel_search)
+        controls.append(self.search_cancel)
         self.search_bar.set_child(controls)
         self.search_bar.connect_entry(self.search_entry)
         self.toolbar_view.add_top_bar(self.search_bar)
@@ -242,7 +260,15 @@ class MainWindow(Adw.ApplicationWindow):
         if not bar.get_search_mode():
             self.clear_search()
 
+    def on_cancel_search(self, button):
+        self.clear_search()
+        self.search_status.set_text(_("Search cancelled"))
+
     def clear_search(self, entry=None):
+        if self.search_source_id:
+            GLib.source_remove(self.search_source_id)
+            self.search_source_id = 0
+        self.search_cancel.set_visible(False)
         self.search_results.clear()
         self.search_index = 0
         self.search_previous.set_sensitive(False)
@@ -252,6 +278,8 @@ class MainWindow(Adw.ApplicationWindow):
 
     def on_search(self, entry):
         """Find the query across all pages, or advance on repeated Enter."""
+        if self.search_source_id:
+            return
         if self.search_results:
             self.move_search_result(None, 1)
             return
@@ -261,19 +289,34 @@ class MainWindow(Adw.ApplicationWindow):
         if not query or document is None:
             return
 
-        for page_number in range(document.page_count):
-            page = document.get_page(page_number)
-            self.search_results.extend(
-                (page_number, rectangle) for rectangle in page.find_text(query)
-            )
-
-        if not self.search_results:
-            self.search_status.set_text(_("No results"))
+        if self.search_source_id:
             return
+        self.search_cancel.set_visible(True)
+        self.search_status.set_text(_("Searching…"))
+        self.search_source_id = GLib.idle_add(
+            self.search_page, document.document, query, 0
+        )
 
-        self.search_previous.set_sensitive(len(self.search_results) > 1)
-        self.search_next.set_sensitive(len(self.search_results) > 1)
-        self.show_search_result()
+    def search_page(self, document, query, page_number):
+        self.search_source_id = 0
+        page = document.get_page(page_number)
+        self.search_results.extend(
+            (page_number, rectangle) for rectangle in page.find_text(query)
+        )
+        page_number += 1
+        if page_number < document.get_n_pages():
+            self.search_source_id = GLib.idle_add(
+                self.search_page, document, query, page_number
+            )
+        else:
+            self.search_cancel.set_visible(False)
+            if not self.search_results:
+                self.search_status.set_text(_("No results"))
+            else:
+                self.search_previous.set_sensitive(len(self.search_results) > 1)
+                self.search_next.set_sensitive(len(self.search_results) > 1)
+                self.show_search_result()
+        return GLib.SOURCE_REMOVE
 
     def move_search_result(self, button, direction):
         self.search_index = (self.search_index + direction) % len(self.search_results)
@@ -281,8 +324,7 @@ class MainWindow(Adw.ApplicationWindow):
 
     def show_search_result(self):
         page_number, rectangle = self.search_results[self.search_index]
-        if page_number != self.viewer.page_number:
-            self.viewer.go_to_page(page_number)
+        self.viewer.navigate_to_page(page_number)
         self.viewer.set_search_highlight(rectangle)
         self.search_status.set_text(
             _("{current} of {total}").format(
@@ -382,12 +424,46 @@ class MainWindow(Adw.ApplicationWindow):
 
     def create_actions(self):
         """Create window actions."""
+        for name, backwards in (("history-back", True), ("history-forward", False)):
+            action = Gio.SimpleAction.new(name, None)
+            action.set_enabled(False)
+            action.connect("activate", self.on_history_navigation, backwards)
+            self.add_action(action)
+        self.get_application().set_accels_for_action("win.history-back", ["<Alt>Left"])
+        self.get_application().set_accels_for_action("win.history-forward", ["<Alt>Right"])
+
+        for name, callback, shortcuts in (
+            ("properties", self.on_properties, ["<Alt>Return"]),
+            ("shortcuts", self.on_shortcuts, ["<Control>question"]),
+            ("presentation", self.on_presentation, ["F5"]),
+            ("presentation-current", self.on_presentation, ["<Shift>F5"]),
+        ):
+            action = Gio.SimpleAction.new(name, None)
+            action.connect("activate", callback)
+            action.set_enabled(name == "shortcuts")
+            self.add_action(action)
+            self.get_application().set_accels_for_action("win." + name, shortcuts)
+
+        for name, clockwise, shortcut in (
+            ("rotate-left", False, "<Control>bracketleft"),
+            ("rotate-right", True, "<Control>bracketright"),
+        ):
+            action = Gio.SimpleAction.new(name, None)
+            action.set_enabled(False)
+            action.connect("activate", self.on_rotate, clockwise)
+            self.add_action(action)
+            self.get_application().set_accels_for_action("win." + name, [shortcut])
 
         layout = Gio.SimpleAction.new_stateful(
             "page-layout", GLib.VariantType.new("s"), GLib.Variant("s", "single")
         )
         layout.connect("change-state", self.on_page_layout_changed)
         self.add_action(layout)
+
+        self.print_action = Gio.SimpleAction.new("print", None)
+        self.print_action.connect("activate", self.on_print)
+        self.print_action.set_enabled(False)
+        self.add_action(self.print_action)
 
         self.find_action = Gio.SimpleAction.new("find", None)
         self.find_action.connect("activate", self.on_find)
@@ -502,6 +578,240 @@ class MainWindow(Adw.ApplicationWindow):
             self.fit_page_action
         )
 
+
+    def on_rotate(self, action, parameter, clockwise):
+        self.viewer.rotate(clockwise)
+
+    def on_navigation_key(self, controller, keyval, keycode, state):
+        if self.presentation_state is not None:
+            if keyval in (Gdk.KEY_Escape, Gdk.KEY_F5):
+                self.end_presentation()
+                return True
+            if keyval in (Gdk.KEY_Right, Gdk.KEY_Down, Gdk.KEY_space, Gdk.KEY_Page_Down):
+                if self.viewer.get_visible_child_name() == "presentation-end":
+                    self.end_presentation()
+                elif self.viewer.page_number == self.viewer.document.page_count - 1:
+                    self.viewer.set_visible_child_name("presentation-end")
+                    self.presentation_end.grab_focus()
+                else:
+                    self.viewer.next_page()
+                return True
+            if keyval in (Gdk.KEY_Left, Gdk.KEY_Up, Gdk.KEY_BackSpace, Gdk.KEY_Page_Up):
+                if self.viewer.get_visible_child_name() == "presentation-end":
+                    self.viewer.set_visible_child_name("document")
+                    self.viewer.drawing_area.grab_focus()
+                else:
+                    self.viewer.previous_page()
+                return True
+            if keyval in (Gdk.KEY_Home, Gdk.KEY_End):
+                self.viewer.set_visible_child_name("document")
+                self.viewer.drawing_area.grab_focus()
+
+        if isinstance(self.get_focus(), Gtk.Editable):
+            return False
+        document = self.viewer.document
+        if document is None or not document.is_open:
+            return False
+        if state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK):
+            return False
+        if keyval in (Gdk.KEY_Home, Gdk.KEY_End):
+            self.viewer.go_to_page(0 if keyval == Gdk.KEY_Home else document.page_count - 1)
+            return True
+        if keyval in (Gdk.KEY_Up, Gdk.KEY_Down, Gdk.KEY_Left, Gdk.KEY_Right):
+            if self.viewer.continuous:
+                vertical = self.viewer.continuous_vertical
+                horizontal = self.viewer.continuous_horizontal
+            else:
+                vertical = self.viewer.scrolled.get_vadjustment()
+                horizontal = self.viewer.scrolled.get_hadjustment()
+            adjustment = horizontal if keyval in (Gdk.KEY_Left, Gdk.KEY_Right) else vertical
+            direction = -1 if keyval in (Gdk.KEY_Up, Gdk.KEY_Left) else 1
+            adjustment.set_value(adjustment.get_value() + direction * 40)
+            return True
+        return False
+
+    def create_presentation_end(self):
+        self.presentation_end = Gtk.Overlay(focusable=True)
+        background = Gtk.DrawingArea(hexpand=True, vexpand=True)
+        background.set_draw_func(self.draw_presentation_end)
+        self.presentation_end.set_child(background)
+        label = Gtk.Label(
+            label=GLib.markup_escape_text(_("End of presentation. Click to exit.")),
+            use_markup=True, wrap=True,
+            halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
+            margin_start=24, margin_end=24,
+        )
+        label.set_markup(
+            '<span foreground="white" size="large">'
+            + GLib.markup_escape_text(_("End of presentation. Click to exit."))
+            + '</span>'
+        )
+        self.presentation_end.add_overlay(label)
+        click = Gtk.GestureClick(button=1)
+        click.connect("released", self.on_presentation_end_clicked)
+        self.presentation_end.add_controller(click)
+        self.viewer.add_named(self.presentation_end, "presentation-end")
+
+    def draw_presentation_end(self, area, cr, width, height):
+        cr.set_source_rgb(0, 0, 0)
+        cr.paint()
+
+    def on_presentation_end_clicked(self, gesture, presses, x, y):
+        if self.presentation_state is not None:
+            self.end_presentation()
+
+    def on_presentation(self, action, parameter):
+        if self.presentation_state is not None:
+            self.end_presentation()
+            return
+        viewer = self.viewer
+        self.presentation_state = (
+            viewer.continuous, viewer.zoom, viewer.fit_mode,
+            self.sidebar.get_visible(), self.is_fullscreen(),
+        )
+        self.search_bar.set_search_mode(False)
+        self.lookup_action("page-layout").change_state(GLib.Variant("s", "single"))
+        self.sidebar.set_visible(False)
+        self.toolbar_view.set_reveal_top_bars(False)
+        self.toolbar_view.set_reveal_bottom_bars(False)
+        self.fullscreen()
+        if action is None or action.get_name() != "presentation-current":
+            viewer.go_to_page(0)
+        viewer.fit_page()
+        viewer.drawing_area.grab_focus()
+        GLib.idle_add(self.fit_presentation)
+
+    def fit_presentation(self):
+        if self.presentation_state is not None:
+            self.viewer.fit_page()
+        return GLib.SOURCE_REMOVE
+
+    def end_presentation(self):
+        continuous, zoom, fit_mode, sidebar, fullscreen = self.presentation_state
+        self.presentation_state = None
+        self.viewer.set_visible_child_name("document")
+        self.toolbar_view.set_reveal_top_bars(True)
+        self.toolbar_view.set_reveal_bottom_bars(True)
+        self.sidebar.set_visible(sidebar)
+        if not fullscreen:
+            self.unfullscreen()
+        self.lookup_action("page-layout").change_state(
+            GLib.Variant("s", "continuous" if continuous else "single")
+        )
+        self.viewer.set_zoom(zoom)
+        self.viewer.fit_mode = fit_mode
+
+    def show_information(self, heading, rows):
+        dialog = Adw.AlertDialog.new(heading, None)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        for title, value in rows:
+            label = Gtk.Label(
+                label=title + " — " + str(value), xalign=0,
+                wrap=True, selectable=True, use_markup=False,
+            )
+            content.append(label)
+        dialog.set_extra_child(content)
+        dialog.add_response("close", _("Close"))
+        dialog.present(self)
+        return dialog
+
+    def document_properties(self):
+        document = self.viewer.document
+        pdf = document.document
+        permissions = pdf.get_permissions()
+        rows = [
+            (_("File"), document.name),
+            (_("Title"), pdf.get_title() or _("Not specified")),
+            (_("Author"), pdf.get_author() or _("Not specified")),
+            (_("Subject"), pdf.get_subject() or _("Not specified")),
+            (_("Creator"), pdf.get_creator() or _("Not specified")),
+            (_("Pages"), document.page_count),
+        ]
+        try:
+            info = document.file.query_info("standard::size", Gio.FileQueryInfoFlags.NONE, None)
+            rows.append((_("Size"), GLib.format_size(info.get_size())))
+        except GLib.Error:
+            rows.append((_("Size"), _("Unavailable")))
+        for title, permission in (
+            (_("Printing allowed"), Poppler.Permissions.OK_TO_PRINT),
+            (_("Copying allowed"), Poppler.Permissions.OK_TO_COPY),
+            (_("Annotations allowed"), Poppler.Permissions.OK_TO_ADD_NOTES),
+            (_("Modification allowed"), Poppler.Permissions.OK_TO_MODIFY),
+        ):
+            rows.append((title, _("Yes") if permissions & permission else _("No")))
+        return rows
+
+    def on_properties(self, action, parameter):
+        self.show_information(_("Document properties"), self.document_properties())
+
+    def on_shortcuts(self, action, parameter):
+        self.show_information(_("Keyboard shortcuts"), [
+            (_("Open PDF"), "Ctrl+O"),
+            (_("Find in PDF"), "Ctrl+F"),
+            (_("Print…"), "Ctrl+P"),
+            (_("Copy selection"), "Ctrl+C"),
+            (_("Scroll"), "↑ ↓ ← →"),
+            (_("Rotate left / right"), "Ctrl+[ / Ctrl+]"),
+            (_("Previous / next page"), "Page Up / Page Down"),
+            (_("First / last page"), "Home / End"),
+            (_("Back / forward"), "Alt+← / Alt+→"),
+            (_("Document properties"), "Alt+Enter"),
+            (_("Presentation"), "F5"),
+            (_("Present from current page"), "Shift+F5"),
+            (_("Leave presentation"), "Esc"),
+            (_("Presentation navigation"), "← → ↑ ↓ Space / Backspace"),
+        ])
+
+    def on_history_navigation(self, action, parameter, backwards):
+        self.viewer.navigate_history(backwards)
+
+    def update_history_actions(self, viewer):
+        self.lookup_action("history-back").set_enabled(bool(viewer.back_history))
+        self.lookup_action("history-forward").set_enabled(bool(viewer.forward_history))
+
+    def create_print_operation(self):
+        """Capture the opened PDF so printing is independent of screen layout."""
+        document = self.viewer.document.document
+        operation = Gtk.PrintOperation()
+        operation.set_job_name(self.viewer.document.name)
+        operation.set_unit(Gtk.Unit.POINTS)
+        operation.set_n_pages(document.get_n_pages())
+        operation.set_current_page(self.viewer.page_number)
+        operation.set_embed_page_setup(True)
+        if self.print_settings is not None:
+            operation.set_print_settings(self.print_settings)
+        operation.connect("draw-page", self.draw_print_page, document)
+        return operation
+
+    def on_print(self, action, parameter):
+        document = self.viewer.document
+        if document is None or not document.is_open:
+            return
+        operation = self.create_print_operation()
+        try:
+            result = operation.run(Gtk.PrintOperationAction.PRINT_DIALOG, self)
+            if result == Gtk.PrintOperationResult.APPLY:
+                self.print_settings = operation.get_print_settings()
+            elif result == Gtk.PrintOperationResult.ERROR:
+                operation.get_error()
+        except GLib.Error as error:
+            self.get_application().show_error(_("Unable to print PDF"), str(error))
+
+    def draw_print_page(self, operation, context, number, document):
+        page = document.get_page(number)
+        width, height = page.get_size()
+        if width <= 0 or height <= 0:
+            return
+        scale = min(context.get_width() / width, context.get_height() / height)
+        cr = context.get_cairo_context()
+        cr.save()
+        cr.translate(
+            (context.get_width() - width * scale) / 2,
+            (context.get_height() - height * scale) / 2,
+        )
+        cr.scale(scale, scale)
+        page.render_for_printing(cr)
+        cr.restore()
 
     def on_page_layout_changed(self, action, value):
         mode = value.get_string()
@@ -688,6 +998,7 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
         self.viewer = PDFViewer()
+        self.viewer.connect("history-changed", self.update_history_actions)
 
         self.viewer.connect(
             "page-changed",
@@ -840,7 +1151,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.thumbnails_panel.set_visible_child_name("pages" if document.page_count else "empty")
 
     def on_thumbnail_activated(self, view, position):
-        self.viewer.go_to_page(position)
+        self.viewer.navigate_to_page(position)
 
     def create_annotations_panel(self):
         """Create the read-only list of annotations embedded in the PDF."""
@@ -896,7 +1207,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.annotations_loaded = True
 
     def on_annotation_activated(self, list_box, row):
-        self.viewer.go_to_page(row.page_number)
+        self.viewer.navigate_to_page(row.page_number)
 
     def create_outline_panel(self):
         """Create the sidebar tree and its empty state."""
@@ -962,7 +1273,7 @@ class MainWindow(Adw.ApplicationWindow):
     def on_outline_activated(self, tree, path, column):
         page = self.outline_model[path][1]
         if page >= 0:
-            self.viewer.go_to_page(page)
+            self.viewer.navigate_to_page(page)
 
     def create_sidebar_placeholder(self, text):
         """Cria um conteúdo temporário da barra lateral."""
@@ -985,6 +1296,14 @@ class MainWindow(Adw.ApplicationWindow):
         """Create the bottom navigation bar."""
 
         bar = Gtk.ActionBar()
+
+        for name, icon, label in (
+            ("history-back", "edit-undo-symbolic", _("Back")),
+            ("history-forward", "edit-redo-symbolic", _("Forward")),
+        ):
+            button = Gtk.Button(icon_name=icon, tooltip_text=label)
+            button.set_action_name("win." + name)
+            bar.pack_start(button)
 
         previous_button = Gtk.Button(
             icon_name="go-previous-symbolic",
@@ -1175,6 +1494,9 @@ class MainWindow(Adw.ApplicationWindow):
                 None,
             )
 
+        file_section.append(_("Print…"), "win.print")
+        file_section.append(_("Document properties"), "win.properties")
+
         file_section.append_submenu(
             _("Recent files"),
             recent_menu,
@@ -1186,6 +1508,11 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
         view_section = Gio.Menu()
+        view_section.append(_("Rotate left"), "win.rotate-left")
+        view_section.append(_("Rotate right"), "win.rotate-right")
+        view_section.append(_("Presentation"), "win.presentation")
+        view_section.append(_("Present from current page"), "win.presentation-current")
+        view_section.append(_("Keyboard shortcuts"), "win.shortcuts")
         layouts = Gio.Menu()
         layouts.append(_("Single page"), "win.page-layout::single")
         layouts.append(_("Continuous"), "win.page-layout::continuous")
@@ -1249,12 +1576,20 @@ class MainWindow(Adw.ApplicationWindow):
     def load_document(self, document):
         """Display a PDF document in the window."""
 
+        if self.presentation_state is not None:
+            self.end_presentation()
         self.clear_search()
         self.search_entry.set_text("")
         self.viewer.fit_mode = None
         self.thumbnails_view.set_model(None)
         self.viewer.set_document(document)
         self.find_action.set_enabled(True)
+        self.print_action.set_enabled(True)
+        self.lookup_action("rotate-left").set_enabled(True)
+        self.lookup_action("rotate-right").set_enabled(True)
+        self.lookup_action("properties").set_enabled(True)
+        self.lookup_action("presentation").set_enabled(True)
+        self.lookup_action("presentation-current").set_enabled(True)
         self.update_outline(document)
         self.reset_annotations()
 

@@ -23,8 +23,9 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
+gi.require_version("Poppler", "0.18")
 
-from gi.repository import Adw, Gio, GLib, Gtk
+from gi.repository import Adw, Gio, GLib, Gtk, Poppler
 from pathlib import Path
 from .pdf.document import PDFDocument
 
@@ -48,9 +49,10 @@ class InPeDFApplication(Adw.Application):
     def __init__(self):
         super().__init__(
             application_id=APP_ID,
-            flags=Gio.ApplicationFlags.DEFAULT_FLAGS,
+            flags=Gio.ApplicationFlags.HANDLES_OPEN,
         )
 
+        self.password_dialog = None
         self.window = None
         self.document = PDFDocument()
         self.recent_files = RecentFiles()
@@ -129,6 +131,63 @@ class InPeDFApplication(Adw.Application):
 
         self.window.present()
 
+    def do_open(self, files, n_files, hint):
+        """Open files delivered by the desktop or another application instance."""
+        self.do_activate()
+        for file in files:
+            self.open_file(file)
+
+    def open_file(self, file, password=None):
+        """Use the same document-opening path for every entry point."""
+        if self.password_dialog is not None:
+            self.password_dialog.close()
+            self.password_dialog = None
+        self.window.flush_document_state()
+        try:
+            self.document.open(file, password)
+        except GLib.Error as error:
+            if error.matches(Poppler.error_quark(), Poppler.Error.ENCRYPTED):
+                self.request_password(file, incorrect=password is not None)
+            else:
+                self.show_error(_("Unable to open PDF"), str(error))
+            return
+
+        self.window.load_document(self.document)
+        self.recent_files.add(file)
+        self.window.refresh_menu()
+
+    def request_password(self, file, incorrect=False):
+        """Ask for a password without changing the currently open document."""
+        dialog = Adw.AlertDialog.new(
+            _("Password required"),
+            _("Incorrect password. Try again.") if incorrect
+            else _("Enter the password for {name}.").format(name=file.get_basename()),
+        )
+        dialog.set_body_use_markup(False)
+        entry = Gtk.PasswordEntry(
+            show_peek_icon=True,
+            activates_default=True,
+        )
+        dialog.set_extra_child(entry)
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("open", _("Open PDF"))
+        dialog.set_default_response("open")
+        dialog.set_close_response("cancel")
+        dialog.set_response_appearance("open", Adw.ResponseAppearance.SUGGESTED)
+        dialog.connect("response", self.on_password_response, file, entry)
+        self.password_dialog = dialog
+        dialog.present(self.window)
+        entry.grab_focus()
+
+    def on_password_response(self, dialog, response, file, entry):
+        if dialog is not self.password_dialog:
+            return
+        self.password_dialog = None
+        password = entry.get_text()
+        entry.set_text("")
+        if response == "open":
+            self.open_file(file, password)
+
     def create_action(self, name, callback, shortcuts=None):
         """Cria uma ação global da aplicação."""
         action = Gio.SimpleAction.new(name, None)
@@ -203,26 +262,7 @@ class InPeDFApplication(Adw.Application):
             uri
         )
 
-        self.window.flush_document_state()
-
-        try:
-            self.document.open(
-                file
-            )
-
-            self.window.load_document(
-                self.document
-            )
-
-            self.recent_files.add(
-                file
-            )
-
-        except GLib.Error as error:
-            self.show_error(
-                _("Unable to open PDF"),
-                str(error),
-            )
+        self.open_file(file)
 
     def on_open_finish(self, dialog, result):
         """Processa o arquivo escolhido pelo usuário."""
@@ -237,28 +277,7 @@ class InPeDFApplication(Adw.Application):
             # cancelou o seletor de arquivos.
             return
 
-        self.window.flush_document_state()
-
-        try:
-            self.document.open(
-                file
-            )
-
-            self.window.load_document(
-                self.document
-            )
-
-            self.recent_files.add(
-                file
-            )
-
-            self.window.refresh_menu()
-
-        except GLib.Error as error:
-            self.show_error(
-                _("Unable to open PDF"),
-                str(error),
-            )
+        self.open_file(file)
 
     def show_error(self, heading, message):
         """Exibe uma mensagem de erro"""

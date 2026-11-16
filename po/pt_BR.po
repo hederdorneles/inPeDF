@@ -181,3 +181,136 @@ msgstr "Contínuo"
 #: inpedf/window.py
 msgid "View mode"
 msgstr "Modo de visualização"
+
+#: inpedf/application.py
+msgid "Password required"
+msgstr "Senha necessária"
+
+#: inpedf/application.py
+msgid "Incorrect password. Try again."
+msgstr "Senha incorreta. Tente novamente."
+
+#: inpedf/application.py
+msgid "Enter the password for {name}."
+msgstr "Digite a senha de {name}."
+
+#: inpedf/application.py
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: inpedf/widgets/viewer.py
+msgid "Unable to open link"
+msgstr "Não foi possível abrir o link"
+
+#: inpedf/window.py
+msgid "Print…"
+msgstr "Imprimir…"
+
+#: inpedf/window.py
+msgid "Unable to print PDF"
+msgstr "Não foi possível imprimir o PDF"
+
+msgid "Cancel search"
+msgstr "Cancelar busca"
+
+msgid "Search cancelled"
+msgstr "Busca cancelada"
+
+msgid "Searching…"
+msgstr "Buscando…"
+
+msgid "Back"
+msgstr "Voltar"
+
+msgid "Forward"
+msgstr "Avançar"
+
+msgid "Close"
+msgstr "Fechar"
+
+msgid "File"
+msgstr "Arquivo"
+
+msgid "Title"
+msgstr "Título"
+
+msgid "Author"
+msgstr "Autor"
+
+msgid "Subject"
+msgstr "Assunto"
+
+msgid "Creator"
+msgstr "Criador"
+
+msgid "Not specified"
+msgstr "Não informado"
+
+msgid "Size"
+msgstr "Tamanho"
+
+msgid "Unavailable"
+msgstr "Indisponível"
+
+msgid "Printing allowed"
+msgstr "Impressão permitida"
+
+msgid "Copying allowed"
+msgstr "Cópia permitida"
+
+msgid "Annotations allowed"
+msgstr "Anotações permitidas"
+
+msgid "Modification allowed"
+msgstr "Modificação permitida"
+
+msgid "Yes"
+msgstr "Sim"
+
+msgid "No"
+msgstr "Não"
+
+msgid "Document properties"
+msgstr "Propriedades do documento"
+
+msgid "Keyboard shortcuts"
+msgstr "Atalhos de teclado"
+
+msgid "Copy selection"
+msgstr "Copiar seleção"
+
+msgid "Scroll"
+msgstr "Rolar"
+
+msgid "Previous / next page"
+msgstr "Página anterior / seguinte"
+
+msgid "First / last page"
+msgstr "Primeira / última página"
+
+msgid "Back / forward"
+msgstr "Voltar / avançar"
+
+msgid "Presentation"
+msgstr "Apresentação"
+
+msgid "Leave presentation"
+msgstr "Sair da apresentação"
+
+msgid "Presentation navigation"
+msgstr "Navegar na apresentação"
+
+msgid "End of presentation. Click to exit."
+msgstr "Fim da apresentação. Clique para sair."
+
+msgid "Present from current page"
+msgstr "Apresentar a partir da página atual"
+
+msgid "Rotate left"
+msgstr "Girar à esquerda"
+
+msgid "Rotate right"
+msgstr "Girar à direita"
+
+msgid "Rotate left / right"
+msgstr "Girar à esquerda / direita"
