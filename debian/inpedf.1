@@ -1,0 +1,43 @@
+.TH INPEDF 1 "November 2026" "inPeDF 0.2.0" "User Commands"
+.SH NAME
+inpedf \- PDF reader for the GNOME desktop
+.SH SYNOPSIS
+.B inpedf
+.RI [ FILE ... ]
+.SH DESCRIPTION
+.B inpedf
+opens PDF documents using GTK 4, Libadwaita and Poppler.
+It supports continuous and single-page views, text search and selection,
+bookmarks, document outlines, thumbnails, printing and fullscreen presentations.
+.PP
+Files may be specified as paths or URIs.
+When the application is already running, files are sent to the existing instance.
+.SH KEYBOARD SHORTCUTS
+.TP
+.B Ctrl+O
+Open a PDF document.
+.TP
+.B Ctrl+F
+Search for text.
+.TP
+.B Ctrl+P
+Print the document.
+.TP
+.B F5
+Start a presentation from the first page.
+.TP
+.B Shift+F5
+Start a presentation from the current page.
+.TP
+.B Escape
+Leave the presentation or clear the selection.
+.SH FILES
+.TP
+.I $XDG_STATE_HOME/inpedf/documents.json
+Reading positions and personal bookmarks.
+The default state directory is ~/.local/state.
+.SH AUTHOR
+Heder Dorneles Soares.
+.SH COPYRIGHT
+Copyright 2026 Heder Dorneles Soares.
+Licensed under the GNU General Public License version 2 only.

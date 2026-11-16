@@ -1,0 +1,15 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: inPeDF
+Upstream-Contact: Heder Dorneles Soares <heder.to@gmail.com>
+Source: https://github.com/hederdorneles/inPeDF
+
+Files: *
+Copyright: 2026 Heder Dorneles Soares
+License: GPL-2
+
+License: GPL-2
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License, version 2.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ version 2 can be found in /usr/share/common-licenses/GPL-2.

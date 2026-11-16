@@ -1,0 +1,14 @@
+main.py usr/share/inpedf
+inpedf/*.py usr/share/inpedf/inpedf
+inpedf/pdf/*.py usr/share/inpedf/inpedf/pdf
+inpedf/widgets/*.py usr/share/inpedf/inpedf/widgets
+data/br.com.inpedf.InPeDF.gschema.xml usr/share/glib-2.0/schemas
+debian/build/locale/pt_BR/LC_MESSAGES/inpedf.mo usr/share/locale/pt_BR/LC_MESSAGES
+inpedf/resources/icons/hicolor/16x16/apps/inpedf.png usr/share/icons/hicolor/16x16/apps
+inpedf/resources/icons/hicolor/24x24/apps/inpedf.png usr/share/icons/hicolor/24x24/apps
+inpedf/resources/icons/hicolor/32x32/apps/inpedf.png usr/share/icons/hicolor/32x32/apps
+inpedf/resources/icons/hicolor/48x48/apps/inpedf.png usr/share/icons/hicolor/48x48/apps
+inpedf/resources/icons/hicolor/64x64/apps/inpedf.png usr/share/icons/hicolor/64x64/apps
+inpedf/resources/icons/hicolor/128x128/apps/inpedf.png usr/share/icons/hicolor/128x128/apps
+inpedf/resources/icons/hicolor/256x256/apps/inpedf.png usr/share/icons/hicolor/256x256/apps
+inpedf/resources/icons/hicolor/512x512/apps/inpedf.png usr/share/icons/hicolor/512x512/apps
