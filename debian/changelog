@@ -1,3 +1,12 @@
+inpedf (0.3.0-1~ppa1~noble1) noble; urgency=medium
+
+  * Add Markdown, TXT and JSON export through the desktop and headless CLI.
+  * Support parallel batch conversion, page ranges, cancellation and reports.
+  * Add export regression tests, CLI help and bilingual documentation.
+  * Enable mouse navigation and the default pointer during presentations.
+
+ -- Heder Dorneles Soares <heder.to@gmail.com>  Tue, 17 Nov 2026 15:23:12 -0300
+
 inpedf (0.2.0-1~ppa1~noble1) noble; urgency=medium
 
   * Initial Ubuntu PPA packaging for inPeDF 0.2.0.
