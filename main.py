@@ -20,6 +20,7 @@
 
 """Ponto de entrada da aplicação inPeDF."""
 
+import os
 import sys
 
 
@@ -46,6 +47,9 @@ def main() -> int:
                 "  inpedf export document.pdf --format md,json --output-dir converted\n"
                 "  inpedf export documents/*.pdf --jobs 4 --report report.json\n\n"
                 "Detailed export options: inpedf export --help\n"
+                "The desktop reader opens in the background and releases the terminal.\n"
+                "Diagnostics: $XDG_STATE_HOME/inpedf/inpedf.log\n"
+                "             (default: ~/.local/state/inpedf/inpedf.log).\n"
                 "Desktop keyboard shortcuts are available in the application menu."
             ),
         )
@@ -58,9 +62,40 @@ def main() -> int:
         from inpedf.export_cli import main as export_main
         return export_main(sys.argv[2:])
 
+    gui_child = os.environ.pop("_INPEDF_GUI_CHILD", None) == "1"
+    has_option = len(sys.argv) > 1 and sys.argv[1].startswith("-") and sys.argv[1] != "--"
+    if not gui_child and not has_option:
+        return launch_gui()
+
     from inpedf.application import InPeDFApplication
     app = InPeDFApplication()
     return app.run(sys.argv)
+
+
+def launch_gui() -> int:
+    """Start the desktop reader in its own session with diagnostics in a log."""
+    from pathlib import Path
+    import subprocess
+
+    state_home = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state")
+    log_directory = state_home / "inpedf"
+    try:
+        log_directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+        log_path = log_directory / "inpedf.log"
+        descriptor = os.open(log_path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        with os.fdopen(descriptor, "ab") as log:
+            subprocess.Popen(
+                [sys.executable, str(Path(__file__).resolve()), *sys.argv[1:]],
+                stdin=subprocess.DEVNULL,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+                env={**os.environ, "_INPEDF_GUI_CHILD": "1"},
+            )
+    except OSError as error:
+        print(f"Unable to start inPeDF: {error}", file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":

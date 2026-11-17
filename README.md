@@ -25,7 +25,19 @@ Leitor de PDFs para Linux, desenvolvido em Python com GTK 4, Libadwaita e Popple
 - Lista de arquivos recentes, preferências e interface traduzível, com suporte a créditos de tradutores.
 - Abertura por caminho ou URI, inclusive quando o aplicativo já está em execução.
 
-### Como executar
+### Instalação pelo PPA (Ubuntu 24.04)
+
+Adicione o PPA e instale o inPeDF pelo gerenciador de pacotes.
+
+```bash
+sudo add-apt-repository ppa:heder-to/inpedf
+sudo apt update
+sudo apt install inpedf
+```
+
+Depois, abra pelo menu de aplicativos ou execute **inpedf** no terminal. As atualizações publicadas no PPA chegam pelo gerenciador de atualizações do Ubuntu.
+
+### Executar pelo código-fonte
 
 Requisitos principais: Python 3, GTK 4.10 ou superior, Libadwaita 1.5 ou superior, Poppler, PyGObject e Pycairo.
 
@@ -85,6 +97,8 @@ A conversão continua quando um arquivo falha. PDFs de pastas diferentes com o m
 
 O Markdown contém texto literal separado por páginas. O JSON inclui metadados, número e dimensões de cada página e o texto extraído. A ordem de leitura depende do texto disponível no PDF. OCR, reconstrução de títulos, tabelas, fórmulas e descrição de imagens ficam para uma etapa posterior. Páginas sem texto extraível geram um aviso.
 
+Ao executar o comando instalado **inpedf**, a janela abre em segundo plano e libera o terminal. Mensagens de diagnóstico ficam em **$XDG_STATE_HOME/inpedf/inpedf.log**, ou **~/.local/state/inpedf/inpedf.log** por padrão. A exportação e os comandos de ajuda continuam em primeiro plano. A execução direta com **python3 main.py** também abre a interface em segundo plano e libera o terminal.
+
 ### Atalhos
 
 | Atalho | Ação |
@@ -133,6 +147,18 @@ A PDF reader for Linux, built with Python, GTK 4, Libadwaita and Poppler. inPeDF
 - Opening a PDF by dragging and dropping a file onto the window.
 - Recent files, preferences and a translatable interface with translator credit support.
 - Opening by file path or URI, including when the application is already running.
+
+### Install from the PPA (Ubuntu 24.04)
+
+Add the PPA and install inPeDF using the package manager.
+
+```bash
+sudo add-apt-repository ppa:heder-to/inpedf
+sudo apt update
+sudo apt install inpedf
+```
+
+Then open it from the application menu or run **inpedf** in a terminal. Updates published in the PPA are delivered through Ubuntu's update manager.
 
 ### Running from source
 
@@ -193,6 +219,8 @@ With the application installed, use **inpedf export** instead of **python3 main.
 Conversion continues when a file fails. Same-named PDFs from different folders receive a suffix to distinguish their outputs. Exit codes are 0 for success, 1 for conversion or write failures, 2 for invalid options and 130 for cancellation.
 
 Markdown contains literal text separated by page headings. JSON includes metadata, each page's number and dimensions, and extracted text. Reading order depends on the PDF's available text. OCR, heading reconstruction, tables, formulas and image descriptions are planned for a later stage. Pages without extractable text produce a warning.
+
+The installed **inpedf** command opens the window in the background and releases the terminal. Diagnostic messages are written to **$XDG_STATE_HOME/inpedf/inpedf.log**, or **~/.local/state/inpedf/inpedf.log** by default. Export and help commands run in the foreground. Running **python3 main.py** directly also opens the interface in the background and releases the terminal.
 
 ### Keyboard shortcuts
 

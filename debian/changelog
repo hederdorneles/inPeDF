@@ -1,3 +1,13 @@
+inpedf (0.3.1-1~ppa1~noble1) noble; urgency=medium
+
+  * Detach desktop startup from the terminal for both the launcher and main.py.
+  * Write desktop diagnostics to the user state directory.
+  * Preserve foreground execution and exit codes for export and help commands.
+  * Document PPA installation in Portuguese and English.
+  * Add regression tests for detached startup and log failures.
+
+ -- Heder Dorneles Soares <heder.to@gmail.com>  Tue, 17 Nov 2026 16:35:12 -0300
+
 inpedf (0.3.0-1~ppa1~noble1) noble; urgency=medium
 
   * Add Markdown, TXT and JSON export through the desktop and headless CLI.
