@@ -339,3 +339,63 @@ msgstr "Não foi possível salvar o marcador"
 #: inpedf/application.py
 msgid "translator-credits"
 msgstr ""
+
+#: inpedf/export_dialog.py
+msgid "Export…"
+msgstr "Exportar…"
+
+#: inpedf/export_dialog.py
+msgid "Export document"
+msgstr "Exportar documento"
+
+#: inpedf/export_dialog.py
+msgid "Choose a format and page range."
+msgstr "Escolha o formato e o intervalo de páginas."
+
+#: inpedf/export_dialog.py
+msgid "Format"
+msgstr "Formato"
+
+#: inpedf/export_dialog.py
+msgid "All formats"
+msgstr "Todos os formatos"
+
+#: inpedf/export_dialog.py
+msgid "Pages: all, current, or 1,3-5"
+msgstr "Páginas: all (todas), current (atual) ou 1,3-5"
+
+#: inpedf/export_dialog.py
+msgid "Replace existing files"
+msgstr "Substituir arquivos existentes"
+
+#: inpedf/export_dialog.py
+msgid "Choose output folder"
+msgstr "Escolher pasta de destino"
+
+#: inpedf/export_dialog.py
+msgid "Choose a local folder."
+msgstr "Escolha uma pasta local."
+
+#: inpedf/export_dialog.py
+msgid "Output already exists. Enable Replace existing files to continue."
+msgstr "O arquivo de destino já existe. Ative Substituir arquivos existentes para continuar."
+
+#: inpedf/export_dialog.py
+msgid "Unable to export PDF"
+msgstr "Não foi possível exportar o PDF"
+
+#: inpedf/export_dialog.py
+msgid "Exporting document"
+msgstr "Exportando documento"
+
+#: inpedf/export_dialog.py
+msgid "Exporting page {current} of {total}"
+msgstr "Exportando página {current} de {total}"
+
+#: inpedf/export_dialog.py
+msgid "Export complete"
+msgstr "Exportação concluída"
+
+#: inpedf/export_dialog.py
+msgid "{count} pages have no extractable text. OCR may be required."
+msgstr "{count} páginas não têm texto extraível. OCR pode ser necessário."

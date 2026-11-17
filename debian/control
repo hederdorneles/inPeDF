@@ -2,7 +2,8 @@ Source: inpedf
 Section: graphics
 Priority: optional
 Maintainer: Heder Dorneles Soares <heder.to@gmail.com>
-Build-Depends: debhelper-compat (= 13), gettext, desktop-file-utils, libglib2.0-bin
+Build-Depends: debhelper-compat (= 13), gettext, desktop-file-utils, libglib2.0-bin,
+ python3, python3-gi, python3-cairo, gir1.2-poppler-0.18
 Standards-Version: 4.6.2
 Rules-Requires-Root: no
 Homepage: https://github.com/hederdorneles/inPeDF
@@ -15,5 +16,9 @@ Depends: ${misc:Depends}, python3, python3-gi, python3-cairo, python3-gi-cairo,
  gir1.2-gtk-4.0 (>= 4.10), gir1.2-adw-1 (>= 1.5), gir1.2-poppler-0.18
 Description: PDF reader for the GNOME desktop
  inPeDF is a GTK 4 PDF reader with continuous and single-page views,
- text search and selection, bookmarks, outlines, thumbnails, printing
- and fullscreen presentations.
+ text search and selection, bookmarks, outlines, thumbnails, printing,
+ rotation and fullscreen presentations.
+ .
+ It also exports PDF text to Markdown, plain text and JSON through the
+ desktop interface or a headless command. Batch export supports page
+ ranges, configurable parallel processes, cancellation and result reports.

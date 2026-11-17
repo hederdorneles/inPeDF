@@ -12,5 +12,6 @@ override_dh_auto_install:
 	install -D -m 644 data/inpedf.desktop debian/inpedf/usr/share/applications/br.com.inpedf.InPeDF.desktop
 
 override_dh_auto_test:
+	env -u DISPLAY -u WAYLAND_DISPLAY python3 -B -m unittest discover -s tests -v
 	desktop-file-validate data/inpedf.desktop
 	glib-compile-schemas --strict --dry-run data

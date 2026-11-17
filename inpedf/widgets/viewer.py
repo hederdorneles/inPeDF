@@ -69,6 +69,7 @@ class PDFViewer(Gtk.Stack):
         self.selected_text = ""
         self.search_highlight = None
 
+        self.presentation_mode = False
         self.rotation = 0
         self.zoom = 1.0
         self.fit_mode = None
@@ -773,10 +774,13 @@ class PDFViewer(Gtk.Stack):
         return None
 
     def on_link_motion(self, controller, x, y, area):
+        if self.presentation_mode:
+            area.set_cursor_from_name("default")
+            return
         area.set_cursor_from_name("pointer" if self.link_at(area, x, y) else "text")
 
     def on_link_leave(self, controller, area):
-        area.set_cursor_from_name("text")
+        area.set_cursor_from_name("default" if self.presentation_mode else "text")
 
     def on_selection_end(self, gesture, dx, dy, area):
         self.on_selection_update(gesture, dx, dy, area)

@@ -54,6 +54,37 @@ Para abrir um PDF diretamente, informe o caminho entre aspas quando contiver esp
 python3 main.py "/caminho/meu documento.pdf"
 ```
 
+### Exportação para IA
+
+Consulte a ajuda geral ou todas as opções de exportação sem abrir a interface gráfica.
+
+~~~bash
+python3 main.py --help
+python3 main.py --usage
+python3 main.py export --help
+~~~
+
+No menu **Exportar…**, escolha Markdown, TXT ou JSON, o documento inteiro, a página atual ou um intervalo e a pasta de destino. A exportação mostra o progresso e permite cancelar.
+
+Também é possível converter vários PDFs pelo terminal, sem sessão gráfica.
+
+~~~bash
+python3 main.py export ./documentos/*.pdf --format md,txt,json --output-dir ./convertidos --jobs 4 --report ./relatorio.json
+~~~
+
+Com o aplicativo instalado, use **inpedf export** no lugar de **python3 main.py export**.
+
+- **--pages 1,3-5** escolhe páginas, numeradas a partir de 1.
+- **--jobs** limita os PDFs simultâneos. O padrão é 2.
+- **--overwrite** permite substituir arquivos. Por padrão, arquivos existentes são preservados.
+- **--password-file caminho** lê de um arquivo UTF-8 uma senha comum aos PDFs protegidos.
+- **--report caminho.json** grava os resultados por arquivo, incluindo falhas e páginas sem texto.
+- **Ctrl+C** cancela as tarefas ativas e limpa as saídas incompletas. Os arquivos já concluídos são preservados.
+
+A conversão continua quando um arquivo falha. PDFs de pastas diferentes com o mesmo nome recebem um sufixo para distinguir as saídas. Os códigos de saída são 0 para sucesso, 1 para falha de conversão ou gravação, 2 para opções inválidas e 130 para cancelamento.
+
+O Markdown contém texto literal separado por páginas. O JSON inclui metadados, número e dimensões de cada página e o texto extraído. A ordem de leitura depende do texto disponível no PDF. OCR, reconstrução de títulos, tabelas, fórmulas e descrição de imagens ficam para uma etapa posterior. Páginas sem texto extraível geram um aviso.
+
 ### Atalhos
 
 | Atalho | Ação |
@@ -131,6 +162,37 @@ To open a PDF directly, pass its path, using quotes if it contains spaces.
 ```bash
 python3 main.py "/path/my document.pdf"
 ```
+
+### Exporting for AI
+
+View general help or all export options without opening the graphical interface.
+
+~~~bash
+python3 main.py --help
+python3 main.py --usage
+python3 main.py export --help
+~~~
+
+Use **Export…** in the menu to select Markdown, TXT or JSON, all pages, the current page or a range, and an output folder. Export includes progress and cancellation.
+
+Batch conversion also works from the terminal without a graphical session.
+
+~~~bash
+python3 main.py export ./documents/*.pdf --format md,txt,json --output-dir ./converted --jobs 4 --report ./report.json
+~~~
+
+With the application installed, use **inpedf export** instead of **python3 main.py export**.
+
+- **--pages 1,3-5** selects pages using 1-based numbering.
+- **--jobs** limits concurrent PDFs. The default is 2.
+- **--overwrite** allows replacing files. Existing files are preserved by default.
+- **--password-file path** reads a password shared by encrypted PDFs from a UTF-8 file.
+- **--report path.json** records per-file results, including failures and pages without text.
+- **Ctrl+C** cancels active tasks and cleans up incomplete outputs. Completed files are preserved.
+
+Conversion continues when a file fails. Same-named PDFs from different folders receive a suffix to distinguish their outputs. Exit codes are 0 for success, 1 for conversion or write failures, 2 for invalid options and 130 for cancellation.
+
+Markdown contains literal text separated by page headings. JSON includes metadata, each page's number and dimensions, and extracted text. Reading order depends on the PDF's available text. OCR, heading reconstruction, tables, formulas and image descriptions are planned for a later stage. Pages without extractable text produce a warning.
 
 ### Keyboard shortcuts
 

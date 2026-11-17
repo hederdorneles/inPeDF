@@ -68,6 +68,11 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.build_ui()
         self.create_presentation_end()
+        clicks = Gtk.GestureClick(button=0)
+        clicks.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        clicks.connect("pressed", self.on_presentation_mouse_pressed)
+        clicks.connect("released", self.on_presentation_mouse_released)
+        self.viewer.add_controller(clicks)
         drop_target = Gtk.DropTarget(actions=Gdk.DragAction.COPY)
         drop_target.set_gtypes([Gdk.FileList, Gio.File])
         drop_target.connect("drop", self.on_pdf_dropped)
@@ -464,6 +469,11 @@ class MainWindow(Adw.ApplicationWindow):
         layout.connect("change-state", self.on_page_layout_changed)
         self.add_action(layout)
 
+        self.export_action = Gio.SimpleAction.new("export", None)
+        self.export_action.set_enabled(False)
+        self.export_action.connect("activate", self.on_export)
+        self.add_action(self.export_action)
+
         self.print_action = Gio.SimpleAction.new("print", None)
         self.print_action.connect("activate", self.on_print)
         self.print_action.set_enabled(False)
@@ -666,20 +676,10 @@ class MainWindow(Adw.ApplicationWindow):
                 self.end_presentation()
                 return True
             if keyval in (Gdk.KEY_Right, Gdk.KEY_Down, Gdk.KEY_space, Gdk.KEY_Page_Down):
-                if self.viewer.get_visible_child_name() == "presentation-end":
-                    self.end_presentation()
-                elif self.viewer.page_number == self.viewer.document.page_count - 1:
-                    self.viewer.set_visible_child_name("presentation-end")
-                    self.presentation_end.grab_focus()
-                else:
-                    self.viewer.next_page()
+                self.navigate_presentation(True)
                 return True
             if keyval in (Gdk.KEY_Left, Gdk.KEY_Up, Gdk.KEY_BackSpace, Gdk.KEY_Page_Up):
-                if self.viewer.get_visible_child_name() == "presentation-end":
-                    self.viewer.set_visible_child_name("document")
-                    self.viewer.drawing_area.grab_focus()
-                else:
-                    self.viewer.previous_page()
+                self.navigate_presentation(False)
                 return True
             if keyval in (Gdk.KEY_Home, Gdk.KEY_End):
                 self.viewer.set_visible_child_name("document")
@@ -708,6 +708,31 @@ class MainWindow(Adw.ApplicationWindow):
             return True
         return False
 
+    def navigate_presentation(self, forward):
+        at_end = self.viewer.get_visible_child_name() == "presentation-end"
+        if forward:
+            if at_end:
+                self.end_presentation()
+            elif self.viewer.page_number == self.viewer.document.page_count - 1:
+                self.viewer.set_visible_child_name("presentation-end")
+                self.presentation_end.grab_focus()
+            else:
+                self.viewer.next_page()
+        elif at_end:
+            self.viewer.set_visible_child_name("document")
+            self.viewer.drawing_area.grab_focus()
+        else:
+            self.viewer.previous_page()
+
+    def on_presentation_mouse_pressed(self, gesture, presses, x, y):
+        if self.presentation_state is not None and gesture.get_current_button() in (1, 3):
+            gesture.set_state(Gtk.EventSequenceState.CLAIMED)
+
+    def on_presentation_mouse_released(self, gesture, presses, x, y):
+        button = gesture.get_current_button()
+        if self.presentation_state is not None and button in (1, 3):
+            self.navigate_presentation(button == 1)
+
     def create_presentation_end(self):
         self.presentation_end = Gtk.Overlay(focusable=True)
         background = Gtk.DrawingArea(hexpand=True, vexpand=True)
@@ -725,18 +750,11 @@ class MainWindow(Adw.ApplicationWindow):
             + '</span>'
         )
         self.presentation_end.add_overlay(label)
-        click = Gtk.GestureClick(button=1)
-        click.connect("released", self.on_presentation_end_clicked)
-        self.presentation_end.add_controller(click)
         self.viewer.add_named(self.presentation_end, "presentation-end")
 
     def draw_presentation_end(self, area, cr, width, height):
         cr.set_source_rgb(0, 0, 0)
         cr.paint()
-
-    def on_presentation_end_clicked(self, gesture, presses, x, y):
-        if self.presentation_state is not None:
-            self.end_presentation()
 
     def on_presentation(self, action, parameter):
         if self.presentation_state is not None:
@@ -747,6 +765,8 @@ class MainWindow(Adw.ApplicationWindow):
             viewer.continuous, viewer.zoom, viewer.fit_mode,
             self.sidebar.get_visible(), self.is_fullscreen(),
         )
+        viewer.presentation_mode = True
+        viewer.drawing_area.set_cursor_from_name("default")
         self.search_bar.set_search_mode(False)
         self.lookup_action("page-layout").change_state(GLib.Variant("s", "single"))
         self.sidebar.set_visible(False)
@@ -767,6 +787,8 @@ class MainWindow(Adw.ApplicationWindow):
     def end_presentation(self):
         continuous, zoom, fit_mode, sidebar, fullscreen = self.presentation_state
         self.presentation_state = None
+        self.viewer.presentation_mode = False
+        self.viewer.drawing_area.set_cursor_from_name("text")
         self.viewer.set_visible_child_name("document")
         self.toolbar_view.set_reveal_top_bars(True)
         self.toolbar_view.set_reveal_bottom_bars(True)
@@ -846,6 +868,10 @@ class MainWindow(Adw.ApplicationWindow):
     def update_history_actions(self, viewer):
         self.lookup_action("history-back").set_enabled(bool(viewer.back_history))
         self.lookup_action("history-forward").set_enabled(bool(viewer.forward_history))
+
+    def on_export(self, action, parameter):
+        from .export_dialog import ExportDialog
+        ExportDialog(self).present()
 
     def create_print_operation(self):
         """Capture the opened PDF so printing is independent of screen layout."""
@@ -1573,6 +1599,7 @@ class MainWindow(Adw.ApplicationWindow):
                 None,
             )
 
+        file_section.append(_("Export…"), "win.export")
         file_section.append(_("Print…"), "win.print")
         file_section.append(_("Document properties"), "win.properties")
 
@@ -1664,6 +1691,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.viewer.set_document(document)
         self.find_action.set_enabled(True)
         self.print_action.set_enabled(True)
+        self.export_action.set_enabled(True)
         self.lookup_action("rotate-left").set_enabled(True)
         self.lookup_action("rotate-right").set_enabled(True)
         self.lookup_action("properties").set_enabled(True)

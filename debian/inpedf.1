@@ -12,6 +12,47 @@ bookmarks, document outlines, thumbnails, printing and fullscreen presentations.
 .PP
 Files may be specified as paths or URIs.
 When the application is already running, files are sent to the existing instance.
+.SH HELP
+.B inpedf --help
+or
+.B inpedf --usage
+shows general usage without starting the graphical interface.
+Use
+.B inpedf export --help
+for all batch-export options and examples.
+.SH EXPORT
+.B inpedf export
+.RI [ options ] " FILE ..."
+.PP
+Convert PDFs without starting the graphical interface.
+Text is exported page by page; OCR and table reconstruction are not included.
+.TP
+.BI --format " md,txt,json"
+Comma-separated output formats. Default: md.
+.TP
+.BI --output-dir " DIRECTORY"
+Output directory. Default: converted.
+.TP
+.BI --pages " SELECTION"
+Page numbers such as 1,3-5, or all. Default: all.
+.TP
+.BI --jobs " NUMBER"
+Maximum concurrent PDF conversions. Default: 2.
+.TP
+.B --overwrite
+Allow replacing existing output files.
+.TP
+.BI --password-file " FILE"
+Read a shared PDF password from a UTF-8 file.
+.TP
+.BI --report " FILE"
+Write a JSON report with per-file results and failures.
+.PP
+Ctrl+C cancels active conversions and removes incomplete outputs.
+Completed files are preserved.
+.SH EXIT STATUS
+For the export command: 0 indicates success, 1 a conversion or write failure,
+2 invalid command options, and 130 cancellation.
 .SH KEYBOARD SHORTCUTS
 .TP
 .B Ctrl+O
