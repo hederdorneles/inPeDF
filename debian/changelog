@@ -1,3 +1,13 @@
+inpedf (0.3.2-1~ppa1~noble1) noble; urgency=medium
+
+  * Add --version without loading the graphical interface.
+  * Add mutually exclusive --quiet and --verbose export options.
+  * Add menu actions to copy the document path and open its folder.
+  * Add Ctrl+0 to restore 100 percent zoom.
+  * Update help, translations, documentation and regression tests.
+
+ -- Heder Dorneles Soares <heder.to@gmail.com>  Thu, 19 Nov 2026 13:31:55 -0300
+
 inpedf (0.3.1-1~ppa1~noble1) noble; urgency=medium
 
   * Detach desktop startup from the terminal for both the launcher and main.py.

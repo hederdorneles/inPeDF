@@ -399,3 +399,19 @@ msgstr "Exportação concluída"
 #: inpedf/export_dialog.py
 msgid "{count} pages have no extractable text. OCR may be required."
 msgstr "{count} páginas não têm texto extraível. OCR pode ser necessário."
+
+#: inpedf/window.py
+msgid "Copy document path"
+msgstr "Copiar caminho do documento"
+
+#: inpedf/window.py
+msgid "Open document folder"
+msgstr "Abrir pasta do documento"
+
+#: inpedf/window.py
+msgid "Unable to open document folder"
+msgstr "Não foi possível abrir a pasta do documento"
+
+#: inpedf/window.py
+msgid "Zoom 100%"
+msgstr "Zoom 100%"

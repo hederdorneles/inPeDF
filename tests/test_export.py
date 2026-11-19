@@ -11,6 +11,7 @@ import unittest
 
 import cairo
 
+from inpedf import __version__
 from inpedf.export import markdown_text, page_indices, publish_outputs
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -137,7 +138,7 @@ class ExportTests(unittest.TestCase):
         self.assertFalse(list(output.iterdir()))
 
     def test_help_does_not_import_gtk(self):
-        for arguments in (["--help"], ["--usage"], ["export", "--help"], ["export", "--usage"]):
+        for arguments in (["--help"], ["--usage"], ["--version"], ["export", "--help"], ["export", "--usage"]):
             with self.subTest(arguments=arguments):
                 code = (
                     "import runpy,sys; sys.argv=" + repr(["main.py", *arguments]) + ";\n"
@@ -151,7 +152,30 @@ class ExportTests(unittest.TestCase):
                     capture_output=True, text=True, timeout=10,
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertIn("usage:", result.stdout)
+                if arguments == ["--version"]:
+                    self.assertEqual(result.stdout.strip(), f"inPeDF {__version__}")
+                else:
+                    self.assertIn("usage:", result.stdout)
+
+    def test_quiet_and_verbose(self):
+        source = self.root / "input.pdf"
+        make_pdf(source)
+        report = self.root / "quiet-report.json"
+        result = self.run_cli(source, "--quiet", "--output-dir", self.root / "quiet", "--report", report)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(json.loads(report.read_text())["succeeded"], 1)
+        result = self.run_cli(source, "--quiet", "--output-dir", self.root / "quiet")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("ERROR", result.stderr)
+        self.assertNotIn("Completed:", result.stderr)
+        result = self.run_cli(source, "--verbose", "--output-dir", self.root / "verbose")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("DETAIL worker PID", result.stderr)
+        self.assertIn("DETAIL output:", result.stderr)
+        result = self.run_cli(source, "--quiet", "--verbose")
+        self.assertEqual(result.returncode, 2)
 
     def test_selection_and_markdown(self):
         self.assertEqual(page_indices("3,1-2,2", 3), [0, 1, 2])

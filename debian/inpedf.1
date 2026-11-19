@@ -1,4 +1,4 @@
-.TH INPEDF 1 "November 2026" "inPeDF 0.3.1" "User Commands"
+.TH INPEDF 1 "November 2026" "inPeDF 0.3.2" "User Commands"
 .SH NAME
 inpedf \- PDF reader for the GNOME desktop
 .SH SYNOPSIS
@@ -20,6 +20,9 @@ shows general usage without starting the graphical interface.
 Use
 .B inpedf export --help
 for all batch-export options and examples.
+.PP
+.B inpedf --version
+prints the application version and exits without starting the interface.
 .SH EXPORT
 .B inpedf export
 .RI [ options ] " FILE ..."
@@ -47,6 +50,13 @@ Read a shared PDF password from a UTF-8 file.
 .TP
 .BI --report " FILE"
 Write a JSON report with per-file results and failures.
+.TP
+.B --quiet
+Show errors only.
+.TP
+.B --verbose
+Show conversion settings, worker IDs and output paths.
+Cannot be combined with --quiet.
 .PP
 Ctrl+C cancels active conversions and removes incomplete outputs.
 Completed files are preserved.
@@ -63,6 +73,9 @@ Search for text.
 .TP
 .B Ctrl+P
 Print the document.
+.TP
+.B Ctrl+0
+Set zoom to 100 percent.
 .TP
 .B F5
 Start a presentation from the first page.

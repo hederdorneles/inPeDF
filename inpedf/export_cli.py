@@ -44,7 +44,9 @@ def build_parser():
             "  inpedf export document.pdf --format md,json --output-dir converted\n"
             "  inpedf export documents/*.pdf --jobs 4 --report report.json\n"
             "  inpedf export manual.pdf --pages 1,3-5 --format txt\n"
-            "  inpedf export protected.pdf --password-file password.txt\n\n"
+            "  inpedf export protected.pdf --password-file password.txt\n"
+            "  inpedf export document.pdf --quiet\n"
+            "  inpedf export document.pdf --verbose\n\n"
             "Existing outputs are preserved unless --overwrite is supplied.\n"
             "A failed PDF does not stop the remaining files. Ctrl+C cancels active\n"
             "tasks and removes incomplete outputs; completed files are kept.\n"
@@ -62,6 +64,9 @@ def build_parser():
     parser.add_argument("--overwrite", action="store_true", help="Replace existing output files.")
     parser.add_argument("--password-file", type=Path, help="UTF-8 file containing a common PDF password.")
     parser.add_argument("--report", type=Path, help="Write a JSON result report for retrying failed files.")
+    verbosity = parser.add_mutually_exclusive_group()
+    verbosity.add_argument("--quiet", action="store_true", help="Show errors only.")
+    verbosity.add_argument("--verbose", action="store_true", help="Show conversion settings, worker IDs and output paths.")
     return parser
 
 
@@ -121,7 +126,10 @@ def run_batch(planned, formats, args, password):
                     raise
                 send.close()
                 pending.append((process, receive, source, destinations, stage))
-                print(f"START {source}", file=sys.stderr, flush=True)
+                if not args.quiet:
+                    print(f"START {source}", file=sys.stderr, flush=True)
+                if args.verbose:
+                    print(f"DETAIL worker PID {process.pid}: {source}", file=sys.stderr)
             ready = [
                 item for item in pending
                 if item[1].poll() or item[0].exitcode is not None
@@ -136,11 +144,16 @@ def run_batch(planned, formats, args, password):
                     if result["status"] == "ok":
                         publish_outputs(stage.name, destinations, args.overwrite)
                         result["outputs"] = [str(path) for path in destinations.values()]
-                        print(
-                            f"OK [{len(results) + 1}/{len(planned)}] {source} ({result['pages']} pages)",
-                            flush=True,
-                        )
-                        if result["pages_without_text"]:
+                        if not args.quiet:
+                            print(
+                                f"OK [{len(results) + 1}/{len(planned)}] {source} ({result['pages']} pages)",
+                                flush=True,
+                            )
+                        if args.verbose:
+                            for destination in destinations.values():
+                                print(f"DETAIL output: {destination}", file=sys.stderr)
+                            print(f"DETAIL pages without text: {result['pages_without_text']}", file=sys.stderr)
+                        if result["pages_without_text"] and not args.quiet:
                             print(f"WARNING {source}: {len(result['pages_without_text'])} pages without extractable text; OCR may be required.", file=sys.stderr)
                     else:
                         print(f"ERROR {source}: {result['error']}", file=sys.stderr)
@@ -157,7 +170,8 @@ def run_batch(planned, formats, args, password):
                 time.sleep(0.05)
     except KeyboardInterrupt:
         interrupted = True
-        print("Cancelled. Completed files have been kept.", file=sys.stderr)
+        if not args.quiet:
+            print("Cancelled. Completed files have been kept.", file=sys.stderr)
     finally:
         for process, connection, source, destinations, stage in pending:
             if process.is_alive():
@@ -194,11 +208,19 @@ def main(argv=None):
                 raise ValueError("The report must have a separate path from input and output files.")
             if args.report.exists() and not args.overwrite:
                 raise FileExistsError("Report already exists. Use --overwrite.")
+        if args.verbose:
+            print(
+                f"DETAIL files={len(sources)} jobs={args.jobs} formats={','.join(formats)} "
+                f"pages={args.pages} overwrite={args.overwrite}",
+                file=sys.stderr,
+            )
+            print(f"DETAIL output directory: {args.output_dir}", file=sys.stderr)
         results, interrupted = run_batch(planned, formats, args, password)
         successes = sum(result["status"] == "ok" for result in results)
         failures = sum(result["status"] == "error" for result in results)
         summary = {"succeeded": successes, "failed": failures, "cancelled": interrupted, "files": results}
-        print(f"Completed: {successes}; failed: {failures}; cancelled: {interrupted}", file=sys.stderr)
+        if not args.quiet:
+            print(f"Completed: {successes}; failed: {failures}; cancelled: {interrupted}", file=sys.stderr)
         if args.report:
             args.report.parent.mkdir(parents=True, exist_ok=True)
             with tempfile.TemporaryDirectory(prefix=".inpedf-report-", dir=args.report.parent) as stage:

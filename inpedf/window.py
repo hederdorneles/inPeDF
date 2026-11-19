@@ -442,6 +442,9 @@ class MainWindow(Adw.ApplicationWindow):
         self.get_application().set_accels_for_action("win.history-forward", ["<Alt>Right"])
 
         for name, callback, shortcuts in (
+            ("copy-path", self.on_copy_document_path, []),
+            ("open-folder", self.on_open_document_folder, []),
+            ("actual-size", self.on_actual_size, ["<Control>0"]),
             ("properties", self.on_properties, ["<Alt>Return"]),
             ("shortcuts", self.on_shortcuts, ["<Control>question"]),
             ("presentation", self.on_presentation, ["F5"]),
@@ -851,6 +854,7 @@ class MainWindow(Adw.ApplicationWindow):
             (_("Print…"), "Ctrl+P"),
             (_("Copy selection"), "Ctrl+C"),
             (_("Scroll"), "↑ ↓ ← →"),
+            (_("Zoom 100%"), "Ctrl+0"),
             (_("Rotate left / right"), "Ctrl+[ / Ctrl+]"),
             (_("Previous / next page"), "Page Up / Page Down"),
             (_("First / last page"), "Home / End"),
@@ -868,6 +872,25 @@ class MainWindow(Adw.ApplicationWindow):
     def update_history_actions(self, viewer):
         self.lookup_action("history-back").set_enabled(bool(viewer.back_history))
         self.lookup_action("history-forward").set_enabled(bool(viewer.forward_history))
+
+    def on_copy_document_path(self, action, parameter):
+        file = self.viewer.document.file
+        self.get_clipboard().set(file.get_path() or file.get_uri())
+
+    def on_open_document_folder(self, action, parameter):
+        launcher = Gtk.FileLauncher.new(self.viewer.document.file)
+        launcher.open_containing_folder(self, None, self.on_document_folder_opened)
+
+    def on_document_folder_opened(self, launcher, result):
+        try:
+            launcher.open_containing_folder_finish(result)
+        except GLib.Error as error:
+            if not (error.matches(Gtk.DialogError.quark(), Gtk.DialogError.DISMISSED)
+                    or error.matches(Gtk.DialogError.quark(), Gtk.DialogError.CANCELLED)):
+                self.get_application().show_error(_("Unable to open document folder"), str(error))
+
+    def on_actual_size(self, action, parameter):
+        self.viewer.set_zoom(1.0)
 
     def on_export(self, action, parameter):
         from .export_dialog import ExportDialog
@@ -1602,6 +1625,8 @@ class MainWindow(Adw.ApplicationWindow):
         file_section.append(_("Export…"), "win.export")
         file_section.append(_("Print…"), "win.print")
         file_section.append(_("Document properties"), "win.properties")
+        file_section.append(_("Copy document path"), "win.copy-path")
+        file_section.append(_("Open document folder"), "win.open-folder")
 
         file_section.append_submenu(
             _("Recent files"),
@@ -1614,6 +1639,7 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
         view_section = Gio.Menu()
+        view_section.append(_("Zoom 100%"), "win.actual-size")
         view_section.append(_("Rotate left"), "win.rotate-left")
         view_section.append(_("Rotate right"), "win.rotate-right")
         view_section.append(_("Presentation"), "win.presentation")
@@ -1695,6 +1721,9 @@ class MainWindow(Adw.ApplicationWindow):
         self.lookup_action("rotate-left").set_enabled(True)
         self.lookup_action("rotate-right").set_enabled(True)
         self.lookup_action("properties").set_enabled(True)
+        self.lookup_action("copy-path").set_enabled(True)
+        self.lookup_action("open-folder").set_enabled(True)
+        self.lookup_action("actual-size").set_enabled(True)
         self.lookup_action("presentation").set_enabled(True)
         self.lookup_action("presentation-current").set_enabled(True)
         self.update_outline(document)

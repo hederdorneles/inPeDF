@@ -26,8 +26,9 @@ import sys
 
 def main() -> int:
     """Inicializa e executa a aplicação."""
-    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help", "--usage"):
+    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help", "--usage", "--version"):
         import argparse
+        from inpedf import __version__
 
         parser = argparse.ArgumentParser(
             prog="inpedf",
@@ -55,6 +56,7 @@ def main() -> int:
         )
         parser.add_argument("files", nargs="*", metavar="PDF", help="PDF files to open in the reader.")
         parser.add_argument("--usage", action="help", help="Show this help message and exit.")
+        parser.add_argument("--version", action="version", version=f"inPeDF {__version__}")
         parser.parse_args(sys.argv[1:])
         return 0
 

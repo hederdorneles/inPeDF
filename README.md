@@ -20,6 +20,7 @@ Leitor de PDFs para Linux, desenvolvido em Python com GTK 4, Libadwaita e Popple
 - Impressão pela janela do sistema.
 - Apresentação em tela cheia, com tela de encerramento.
 - Propriedades do documento, incluindo metadados, tamanho e permissões.
+- Comandos no menu para copiar o caminho do documento e abrir sua pasta.
 - Marcadores pessoais por documento, com acesso pelo botão Marcadores na barra inferior.
 - Abertura de um PDF ao arrastar e soltar o arquivo sobre a janela.
 - Lista de arquivos recentes, preferências e interface traduzível, com suporte a créditos de tradutores.
@@ -73,6 +74,7 @@ Consulte a ajuda geral ou todas as opções de exportação sem abrir a interfac
 ~~~bash
 python3 main.py --help
 python3 main.py --usage
+python3 main.py --version
 python3 main.py export --help
 ~~~
 
@@ -88,6 +90,7 @@ Com o aplicativo instalado, use **inpedf export** no lugar de **python3 main.py 
 
 - **--pages 1,3-5** escolhe páginas, numeradas a partir de 1.
 - **--jobs** limita os PDFs simultâneos. O padrão é 2.
+- **--quiet** mostra apenas erros. **--verbose** inclui opções de conversão, processos e arquivos gerados. Escolha uma das opções.
 - **--overwrite** permite substituir arquivos. Por padrão, arquivos existentes são preservados.
 - **--password-file caminho** lê de um arquivo UTF-8 uma senha comum aos PDFs protegidos.
 - **--report caminho.json** grava os resultados por arquivo, incluindo falhas e páginas sem texto.
@@ -107,6 +110,7 @@ Ao executar o comando instalado **inpedf**, a janela abre em segundo plano e lib
 | Ctrl+F | Buscar texto |
 | Ctrl+C | Copiar seleção |
 | Ctrl+P | Imprimir |
+| Ctrl+0 | Zoom de 100% |
 | Setas | Rolar a visualização |
 | Page Up / Page Down | Página anterior / seguinte |
 | Home / End | Primeira / última página |
@@ -143,6 +147,7 @@ A PDF reader for Linux, built with Python, GTK 4, Libadwaita and Poppler. inPeDF
 - Printing through the system dialog.
 - Fullscreen presentations with an end-of-presentation screen.
 - Document properties, including metadata, size and permissions.
+- Menu commands to copy the document path and open its containing folder.
 - Personal bookmarks per document, accessible through the Bookmarks button in the bottom bar.
 - Opening a PDF by dragging and dropping a file onto the window.
 - Recent files, preferences and a translatable interface with translator credit support.
@@ -196,6 +201,7 @@ View general help or all export options without opening the graphical interface.
 ~~~bash
 python3 main.py --help
 python3 main.py --usage
+python3 main.py --version
 python3 main.py export --help
 ~~~
 
@@ -211,6 +217,7 @@ With the application installed, use **inpedf export** instead of **python3 main.
 
 - **--pages 1,3-5** selects pages using 1-based numbering.
 - **--jobs** limits concurrent PDFs. The default is 2.
+- **--quiet** shows errors only. **--verbose** adds conversion settings, worker IDs and generated files. Choose one of these options.
 - **--overwrite** allows replacing files. Existing files are preserved by default.
 - **--password-file path** reads a password shared by encrypted PDFs from a UTF-8 file.
 - **--report path.json** records per-file results, including failures and pages without text.
@@ -230,6 +237,7 @@ The installed **inpedf** command opens the window in the background and releases
 | Ctrl+F | Find text |
 | Ctrl+C | Copy selection |
 | Ctrl+P | Print |
+| Ctrl+0 | Zoom 100% |
 | Arrow keys | Scroll the view |
 | Page Up / Page Down | Previous / next page |
 | Home / End | First / last page |
