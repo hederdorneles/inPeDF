@@ -1,3 +1,15 @@
+inpedf (0.3.3-1~ppa1~noble1) noble; urgency=medium
+
+  * Add issuer-independent digital signature details and local cryptographic
+    checks, processing signature fields sequentially.
+  * Open signature details by clicking a signature appearance or the header
+    button, with signer, certificate and declared signing-time information.
+  * Display the PDF filename and application name in the visible header.
+  * Add middle-button dragging for horizontal and vertical scrolling.
+  * Update translations, shortcuts and bilingual documentation.
+
+ -- Heder Dorneles Soares <heder.to@gmail.com>  Thu, 26 Nov 2026 17:33:07 -0300
+
 inpedf (0.3.2-1~ppa1~noble1) noble; urgency=medium
 
   * Add --version without loading the graphical interface.

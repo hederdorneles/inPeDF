@@ -9,6 +9,7 @@ Leitor de PDFs para Linux, desenvolvido em Python com GTK 4, Libadwaita e Popple
 ### Recursos
 
 - Visualização contínua ou de página única, com zoom e ajuste à largura ou à página.
+- Rolagem vertical e horizontal ao arrastar com o botão do meio do mouse pressionado.
 - Restauração da última página e do zoom de cada documento.
 - Barra lateral com miniaturas clicáveis, sumário navegável e consulta de anotações incorporadas.
 - Busca de texto com destaque, navegação entre resultados e cancelamento.
@@ -17,6 +18,8 @@ Leitor de PDFs para Linux, desenvolvido em Python com GTK 4, Libadwaita e Popple
 - Histórico para voltar e avançar entre pontos de leitura.
 - Rotação da visualização em incrementos de 90°.
 - Abertura de PDFs protegidos por senha.
+- Consulta de assinaturas digitais pelo menu, pelo botão no cabeçalho ou por clique no selo.
+- Dados do signatário, certificado e verificação criptográfica local da revisão assinada. Os dados são lidos do PDF, independentemente do emissor, para os formatos de assinatura reconhecidos pelo Poppler. A confiança e a revogação do certificado e revisões posteriores não são avaliadas.
 - Impressão pela janela do sistema.
 - Apresentação em tela cheia, com tela de encerramento.
 - Propriedades do documento, incluindo metadados, tamanho e permissões.
@@ -136,6 +139,7 @@ A PDF reader for Linux, built with Python, GTK 4, Libadwaita and Poppler. inPeDF
 ### Features
 
 - Continuous and single-page layouts, with zoom, fit-to-width and fit-to-page controls.
+- Vertical and horizontal scrolling by dragging while holding the middle mouse button.
 - Restoration of each document’s last page and zoom level.
 - Sidebar with clickable thumbnails, a navigable outline and embedded annotation viewing.
 - Text search with highlighting, result navigation and cancellation.
@@ -144,6 +148,8 @@ A PDF reader for Linux, built with Python, GTK 4, Libadwaita and Poppler. inPeDF
 - Back and forward history between reading positions.
 - View rotation in 90° increments.
 - Password-protected PDF opening.
+- Digital signature details from the menu, header button or a click on the signature appearance.
+- Signer and certificate information with a local cryptographic check of the signed revision. Information is read from the PDF regardless of the issuer, for signature formats supported by Poppler. Certificate trust, revocation and later revisions are not assessed.
 - Printing through the system dialog.
 - Fullscreen presentations with an end-of-presentation screen.
 - Document properties, including metadata, size and permissions.

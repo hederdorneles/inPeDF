@@ -25,7 +25,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("Poppler", "0.18")
 
-from gi.repository import Adw, Gio, GLib, Gtk, Poppler, Gdk
+from gi.repository import Adw, Gio, GLib, Gtk, Poppler, Gdk, GObject, Pango
 
 from .i18n import _
 from .widgets.viewer import PDFViewer
@@ -351,8 +351,11 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
         title = Gtk.Label(
-            label="inPeDF"
+            ellipsize=Pango.EllipsizeMode.MIDDLE,
+            max_width_chars=60,
         )
+        self.bind_property("title", title, "label", GObject.BindingFlags.SYNC_CREATE)
+        self.bind_property("title", title, "tooltip-text", GObject.BindingFlags.SYNC_CREATE)
 
         title.add_css_class("title")
 
@@ -429,6 +432,12 @@ class MainWindow(Adw.ApplicationWindow):
         self.header_bar.pack_end(
             self.menu_button
         )
+        self.signatures_button = Gtk.Button(
+            icon_name="document-edit-symbolic",
+            tooltip_text=_("Digital signatures"), visible=False,
+        )
+        self.signatures_button.set_action_name("win.signatures")
+        self.header_bar.pack_end(self.signatures_button)
 
 
     def create_actions(self):
@@ -445,6 +454,7 @@ class MainWindow(Adw.ApplicationWindow):
             ("copy-path", self.on_copy_document_path, []),
             ("open-folder", self.on_open_document_folder, []),
             ("actual-size", self.on_actual_size, ["<Control>0"]),
+            ("signatures", self.on_signatures, []),
             ("properties", self.on_properties, ["<Alt>Return"]),
             ("shortcuts", self.on_shortcuts, ["<Control>question"]),
             ("presentation", self.on_presentation, ["F5"]),
@@ -854,6 +864,7 @@ class MainWindow(Adw.ApplicationWindow):
             (_("Print…"), "Ctrl+P"),
             (_("Copy selection"), "Ctrl+C"),
             (_("Scroll"), "↑ ↓ ← →"),
+            (_("Scroll by dragging"), _("Hold the middle mouse button")),
             (_("Zoom 100%"), "Ctrl+0"),
             (_("Rotate left / right"), "Ctrl+[ / Ctrl+]"),
             (_("Previous / next page"), "Page Up / Page Down"),
@@ -872,6 +883,14 @@ class MainWindow(Adw.ApplicationWindow):
     def update_history_actions(self, viewer):
         self.lookup_action("history-back").set_enabled(bool(viewer.back_history))
         self.lookup_action("history-forward").set_enabled(bool(viewer.forward_history))
+
+    def on_signatures(self, action, parameter):
+        from .signatures import SignaturesDialog
+        SignaturesDialog(self).present(self)
+
+    def on_signature_activated(self, viewer, field_id):
+        from .signatures import SignaturesDialog
+        SignaturesDialog(self, field_id).present(self)
 
     def on_copy_document_path(self, action, parameter):
         file = self.viewer.document.file
@@ -1126,6 +1145,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.viewer = PDFViewer()
         self.viewer.connect("history-changed", self.update_history_actions)
+        self.viewer.connect("signature-activated", self.on_signature_activated)
 
         self.viewer.connect(
             "page-changed",
@@ -1625,6 +1645,7 @@ class MainWindow(Adw.ApplicationWindow):
         file_section.append(_("Export…"), "win.export")
         file_section.append(_("Print…"), "win.print")
         file_section.append(_("Document properties"), "win.properties")
+        file_section.append(_("Digital signatures"), "win.signatures")
         file_section.append(_("Copy document path"), "win.copy-path")
         file_section.append(_("Open document folder"), "win.open-folder")
 
@@ -1715,6 +1736,12 @@ class MainWindow(Adw.ApplicationWindow):
         self.viewer.fit_mode = None
         self.thumbnails_view.set_model(None)
         self.viewer.set_document(document)
+        self.lookup_action("signatures").set_enabled(True)
+        count = document.document.get_n_signatures()
+        self.signatures_button.set_visible(count > 0)
+        self.signatures_button.set_tooltip_text(
+            _("Digital signatures ({count})").format(count=count)
+        )
         self.find_action.set_enabled(True)
         self.print_action.set_enabled(True)
         self.export_action.set_enabled(True)

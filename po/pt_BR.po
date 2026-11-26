@@ -415,3 +415,96 @@ msgstr "Não foi possível abrir a pasta do documento"
 #: inpedf/window.py
 msgid "Zoom 100%"
 msgstr "Zoom 100%"
+
+#: inpedf/signatures.py
+msgid "Digital signatures"
+msgstr "Assinaturas digitais"
+
+#: inpedf/signatures.py
+msgid "Digital signatures ({count})"
+msgstr "Assinaturas digitais ({count})"
+
+#: inpedf/signatures.py
+msgid "Digital signature"
+msgstr "Assinatura digital"
+
+#: inpedf/signatures.py
+msgid "Signer"
+msgstr "Signatário"
+
+#: inpedf/signatures.py
+msgid "Declared signing time"
+msgstr "Data declarada da assinatura"
+
+#: inpedf/signatures.py
+msgid "Certificate issuer"
+msgstr "Emissor do certificado"
+
+#: inpedf/signatures.py
+msgid "Certificate valid from"
+msgstr "Certificado válido desde"
+
+#: inpedf/signatures.py
+msgid "Certificate valid until"
+msgstr "Certificado válido até"
+
+#: inpedf/signatures.py
+msgid "Cryptographic signature"
+msgstr "Assinatura criptográfica"
+
+#: inpedf/signatures.py
+msgid "Checking…"
+msgstr "Verificando…"
+
+#: inpedf/signatures.py
+msgid "Local cryptographic check. Certificate trust, revocation and later document revisions are not assessed."
+msgstr "Verificação criptográfica local. A confiança do certificado, sua revogação e revisões posteriores do documento não são avaliadas."
+
+#: inpedf/signatures.py
+msgid "This PDF has no digital signatures"
+msgstr "Este PDF não tem assinaturas digitais"
+
+#: inpedf/signatures.py
+msgid "Go to page {number}"
+msgstr "Ir para a página {number}"
+
+
+#: inpedf/signatures.py
+msgid "Valid for the signed revision"
+msgstr "Válida para a revisão assinada"
+
+#: inpedf/signatures.py
+msgid "Invalid signature"
+msgstr "Assinatura inválida"
+
+#: inpedf/signatures.py
+msgid "The signed content does not match the signature"
+msgstr "O conteúdo assinado não corresponde à assinatura"
+
+#: inpedf/signatures.py
+msgid "Unable to decode the signature"
+msgstr "Não foi possível decodificar a assinatura"
+
+#: inpedf/signatures.py
+msgid "Unable to check the signature"
+msgstr "Não foi possível verificar a assinatura"
+
+#: inpedf/signatures.py
+msgid "No signature data found"
+msgstr "Dados da assinatura não encontrados"
+
+#: inpedf/signatures.py
+msgid "Not checked"
+msgstr "Não verificada"
+
+#: inpedf/signatures.py
+msgid "Unknown status"
+msgstr "Estado desconhecido"
+
+#: inpedf/window.py
+msgid "Scroll by dragging"
+msgstr "Rolar arrastando"
+
+#: inpedf/window.py
+msgid "Hold the middle mouse button"
+msgstr "Mantenha o botão do meio do mouse pressionado"

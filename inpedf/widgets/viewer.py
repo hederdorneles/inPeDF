@@ -37,6 +37,7 @@ class PDFViewer(Gtk.Stack):
     """PDF document viewer."""
 
     __gsignals__ = {
+        "signature-activated": (GObject.SignalFlags.RUN_FIRST, None, (int,)),
         "history-changed": (GObject.SignalFlags.RUN_FIRST, None, ()),
         "page-changed": (
             GObject.SignalFlags.RUN_FIRST,
@@ -64,11 +65,14 @@ class PDFViewer(Gtk.Stack):
         self.page_number = 0
         self.selection_start = None
         self.selection_end = None
+        self.signature_page = None
+        self.signature_mappings = []
         self.link_page = None
         self.page_links = []
         self.selected_text = ""
         self.search_highlight = None
 
+        self.pan_origin = None
         self.presentation_mode = False
         self.rotation = 0
         self.zoom = 1.0
@@ -83,6 +87,14 @@ class PDFViewer(Gtk.Stack):
         self.create_empty_view()
         self.create_document_view()
         self.create_continuous_view()
+        for viewport in (self.scrolled, self.continuous_area):
+            pan = Gtk.GestureDrag(button=2)
+            pan.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+            pan.connect("drag-begin", self.on_pan_begin, viewport)
+            pan.connect("drag-update", self.on_pan_update)
+            pan.connect("drag-end", self.on_pan_end)
+            pan.connect("cancel", self.on_pan_cancel)
+            viewport.add_controller(pan)
         for area in (self.drawing_area, self.continuous_area):
             area.set_focusable(True)
             area.set_cursor_from_name("text")
@@ -214,6 +226,7 @@ class PDFViewer(Gtk.Stack):
     def set_document(self, document):
         """Define o documento exibido no visualizador."""
 
+        self.cancel_pan()
         self.clear_selection()
         self.back_history.clear()
         self.forward_history.clear()
@@ -221,6 +234,8 @@ class PDFViewer(Gtk.Stack):
         self.link_page = None
         self.page_links = []
         self.page_render_cache.clear()
+        self.signature_page = None
+        self.signature_mappings = []
         self.rotation = 0
         self.document = document
         self.search_highlight = None
@@ -349,6 +364,7 @@ class PDFViewer(Gtk.Stack):
 
     def set_continuous(self, enabled):
         """Change the page layout while keeping the current page."""
+        self.cancel_pan()
         self.clear_selection()
         self.continuous = enabled
         if enabled:
@@ -684,6 +700,43 @@ class PDFViewer(Gtk.Stack):
 
         return True
     
+    def on_pan_begin(self, gesture, x, y, viewport):
+        if self.presentation_mode or self.document is None or not self.document.is_open:
+            gesture.set_state(Gtk.EventSequenceState.DENIED)
+            return
+        if self.continuous:
+            horizontal, vertical = self.continuous_horizontal, self.continuous_vertical
+        else:
+            horizontal = self.scrolled.get_hadjustment()
+            vertical = self.scrolled.get_vadjustment()
+        self.pan_origin = (horizontal, vertical, horizontal.get_value(), vertical.get_value())
+        gesture.set_state(Gtk.EventSequenceState.CLAIMED)
+        viewport.grab_focus()
+        self.scrolled.set_cursor_from_name("grabbing")
+        self.drawing_area.set_cursor_from_name("grabbing")
+        self.continuous_area.set_cursor_from_name("grabbing")
+
+    def on_pan_update(self, gesture, dx, dy):
+        if self.pan_origin is None:
+            return
+        horizontal, vertical, start_x, start_y = self.pan_origin
+        horizontal.set_value(start_x - dx)
+        vertical.set_value(start_y - dy)
+
+    def on_pan_end(self, gesture, dx, dy):
+        self.on_pan_update(gesture, dx, dy)
+        self.cancel_pan()
+
+    def on_pan_cancel(self, gesture, sequence):
+        self.cancel_pan()
+
+    def cancel_pan(self):
+        self.pan_origin = None
+        self.scrolled.set_cursor(None)
+        cursor = "default" if self.presentation_mode else "text"
+        self.drawing_area.set_cursor_from_name(cursor)
+        self.continuous_area.set_cursor_from_name(cursor)
+
     def stop_selection_scroll(self):
         if self.selection_scroll_id:
             GLib.source_remove(self.selection_scroll_id)
@@ -773,13 +826,43 @@ class PDFViewer(Gtk.Stack):
                 return mapping.action
         return None
 
+    def signature_at(self, area, x, y):
+        point = self.selection_point(area, x, y)
+        if point is None:
+            return None
+        number, page_x, page_y = point
+        page = self.document.get_page(number)
+        width, height = page.get_size()
+        if not (0 < page_x < width and 0 < page_y < height):
+            return None
+        if self.signature_page != number:
+            self.signature_mappings = [
+                mapping for mapping in page.get_form_field_mapping()
+                if mapping.field.get_field_type() == Poppler.FormFieldType.SIGNATURE
+            ]
+            self.signature_page = number
+        for mapping in self.signature_mappings:
+            bounds = mapping.area
+            if (bounds.x1 <= page_x <= bounds.x2
+                    and bounds.y1 <= height - page_y <= bounds.y2):
+                return mapping.field.get_id()
+        return None
+
     def on_link_motion(self, controller, x, y, area):
+        if self.pan_origin is not None:
+            area.set_cursor_from_name("grabbing")
+            return
         if self.presentation_mode:
             area.set_cursor_from_name("default")
             return
-        area.set_cursor_from_name("pointer" if self.link_at(area, x, y) else "text")
+        area.set_cursor_from_name(
+            "pointer" if self.link_at(area, x, y) or self.signature_at(area, x, y) is not None else "text"
+        )
 
     def on_link_leave(self, controller, area):
+        if self.pan_origin is not None:
+            area.set_cursor_from_name("grabbing")
+            return
         area.set_cursor_from_name("default" if self.presentation_mode else "text")
 
     def on_selection_end(self, gesture, dx, dy, area):
@@ -791,6 +874,10 @@ class PDFViewer(Gtk.Stack):
             action = self.link_at(area, x, y)
             if action is not None:
                 self.activate_link(action)
+            else:
+                field_id = self.signature_at(area, x, y)
+                if field_id is not None:
+                    self.emit("signature-activated", field_id)
 
     def activate_link(self, action):
         if action.type == Poppler.ActionType.GOTO_DEST:
